@@ -1,0 +1,16 @@
+{
+  "expo": {
+    "name": "NetLet",
+    "slug": "netlet",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "scheme": "netlet",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.netlet.marketplace"
+    },
+    "assetBundlePatterns": ["**/*"]
+  }
+}

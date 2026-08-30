@@ -1,0 +1,165 @@
+/**
+ * NetLet design reminder: Sunlit Souk now uses pearl white, luxurious navy blue,
+ * and NetLet Orange for a refined, confident marketplace rhythm.
+ */
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: "Inter", sans-serif;
+  --font-display: "Inter", sans-serif;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
+
+:root {
+  --radius: 1rem;
+  --background: #f3f2ed;
+  --foreground: #0a285a;
+  --card: #ffffff;
+  --card-foreground: #0a285a;
+  --popover: #ffffff;
+  --popover-foreground: #0a285a;
+  --primary: #f2683a;
+  --primary-foreground: #fffdf9;
+  --secondary: #e7edf5;
+  --secondary-foreground: #0a285a;
+  --muted: #edf1f5;
+  --muted-foreground: #536b8c;
+  --accent: #fff0ab;
+  --accent-foreground: #0a285a;
+  --destructive: #bf3c32;
+  --destructive-foreground: #fff;
+  --border: #d5dfeb;
+  --input: #d5dfeb;
+  --ring: #f2683a;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+}
+
+@layer base {
+  * { @apply border-border outline-ring/50; }
+  html { scroll-behavior: smooth; }
+  body { @apply bg-background text-foreground font-sans; font-family: "Inter", sans-serif; font-weight: 400; font-size: 14px; line-height: 1.5; }
+  button:not(:disabled), a[href], input { @apply cursor-pointer; }
+  ::selection { background: #d9e8ff; color: #0a285a; }
+}
+
+@layer components {
+  .container { width: 100%; margin-inline: auto; padding-inline: 1rem; }
+  /* Inter-only marketplace hierarchy — the visual roles below follow the supplied reference. */
+  .type-display, .display-face { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.045em; line-height: 1.05; }
+  .type-heading { font-family: "Inter", sans-serif; font-weight: 700; line-height: 1.25; }
+  .type-product { font-size: 18px !important; font-weight: 700 !important; line-height: 1.25 !important; }
+  .type-price { font-size: 16px !important; font-weight: 600 !important; line-height: 1.2 !important; }
+  .type-price-lg { font-size: 20px !important; font-weight: 600 !important; line-height: 1.2 !important; }
+  .type-control, .pressable { font-family: "Inter", sans-serif; font-size: 14px !important; font-weight: 500 !important; line-height: 1.2 !important; }
+  .type-label { font-size: 12px; font-weight: 500; line-height: 1.3; }
+
+  .type-body { font-family: "Inter", sans-serif; font-size: 14px; font-weight: 400; line-height: 1.5; }
+  @media (min-width: 640px) { .type-body { font-size: 16px; } }
+  .paper-grain { position: relative; isolation: isolate; }
+  .paper-grain::after { content: ""; pointer-events: none; position: absolute; inset: 0; opacity: .12; z-index: -1; background-image: radial-gradient(#0a285a 0.5px, transparent 0.5px); background-size: 5px 5px; mix-blend-mode: multiply; }
+  .product-card { transition: transform 200ms var(--ease-out), box-shadow 200ms var(--ease-out); }
+  .product-card:hover { transform: translateY(-5px); box-shadow: 0 18px 36px rgba(10, 40, 90, .13); }
+  @media (min-width: 1024px) {
+    header > .container:first-child > div:nth-of-type(3) { margin-left: auto; flex-shrink: 0; }
+    header > .container:first-child > button[class*="bg-[#0a285a]"] { margin-left: .25rem; flex-shrink: 0; }
+  }
+  .pressable { transition: transform 160ms var(--ease-out), background-color 160ms var(--ease-out); }
+  .pressable:active { transform: scale(.97); }
+  .hide-scrollbar { scrollbar-width: none; }
+  .hide-scrollbar::-webkit-scrollbar { display: none; }
+
+  @media (min-width: 640px) { .container { padding-inline: 1.5rem; } }
+  @media (min-width: 1024px) { .container { padding-inline: 2rem; max-width: 1440px; } }
+  @media (prefers-reduced-motion: no-preference) {
+    .reveal-up { animation: rise-in 650ms var(--ease-out) both; }
+    .reveal-delay-1 { animation-delay: 70ms; }
+    .reveal-delay-2 { animation-delay: 140ms; }
+    .reveal-delay-3 { animation-delay: 210ms; }
+  }
+}
+
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes netlet-menu-scrim-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes netlet-menu-panel-in {
+  from { opacity: 0; transform: translateX(-28px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .netlet-menu-scrim { animation: netlet-menu-scrim-in 180ms var(--ease-out) both; }
+  .netlet-menu-panel { animation: netlet-menu-panel-in 240ms var(--ease-out) both; will-change: transform, opacity; }
+}
+
+/*
+ * Luxury-blue migration for the original compact Tailwind component palette.
+ * These semantic overrides keep NetLet Orange reserved for actions while
+ * replacing every brown navigation, typography, and surface tone with blue.
+ */
+[class~="bg-[#3b261b]"] { background-color: #0a285a !important; }
+[class~="text-[#30231e]"],
+[class~="text-[#3b261b]"],
+[class~="text-[#4b3326]"],
+[class~="text-[#49362b]"],
+[class~="text-[#514034]"] { color: #0a285a !important; }
+[class~="text-[#5e4f45]"],
+[class~="text-[#65544a]"],
+[class~="text-[#6e5648]"],
+[class~="text-[#6f5446]"],
+[class~="text-[#725e52]"],
+[class~="text-[#78685e]"],
+[class~="text-[#79675b]"],
+[class~="text-[#7d6c60]"],
+[class~="text-[#88766a]"] { color: #536b8c !important; }
+[class~="text-[#8a7a6e]"],
+[class~="text-[#9b8d82]"],
+[class~="text-[#9c8577]"],
+[class~="text-[#9d9187]"],
+[class~="text-[#a19085]"],
+[class~="text-[#aa9381]"] { color: #778ba6 !important; }
+[class~="bg-[#f4eadc]"] { background-color: #e7edf5 !important; }
+[class~="border-[#dfddd5]"],
+[class~="border-[#eadfd3]"],
+[class~="border-[#e7d9c8]"],
+[class~="border-[#e5d6c5]"],
+[class~="border-[#e8dbcc]"],
+[class~="border-[#e8dbce]"] { border-color: #d5dfeb !important; }
+[class~="hover:bg-[#f5eadc]"]:hover { background-color: #e7edf5 !important; }
+[class~="from-[#3b261b]/20"] { --tw-gradient-from: rgb(10 40 90 / .20) var(--tw-gradient-from-position) !important; }
+[class~="from-[#2c1b12]/78"] { --tw-gradient-from: rgb(5 25 61 / .78) var(--tw-gradient-from-position) !important; }
+[class~="via-[#2c1b12]/12"] { --tw-gradient-via: rgb(5 25 61 / .12) var(--tw-gradient-via-position) !important; }
+[class~="divide-[#725548]"] > :not(:last-child) { border-color: #49658d !important; }
+[class~="border-[#725548]"] { border-color: #49658d !important; }

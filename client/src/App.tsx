@@ -10,21 +10,27 @@ import Account from "@/pages/Account";
 import Checkout from "@/pages/Checkout";
 import NotFound from "@/pages/NotFound";
 import ProductDetail from "@/pages/ProductDetail";
-import { Route, Switch } from "wouter";
+import { BASE_PATH } from "@/lib/basePath";
+import { Route, Router as WouterRouter, Switch } from "wouter";
+import DemoNotice from "./components/DemoNotice";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 
 function Router() {
   return (
-    <Switch>
-      <Route path="/" component={Home} />
-      <Route path="/account" component={Account} />
-      <Route path="/checkout" component={Checkout} />
-      <Route path="/products/:handle" component={ProductDetail} />
-      <Route path="/404" component={NotFound} />
-      <Route component={NotFound} />
-    </Switch>
+    // `base` keeps <Link> and useLocation correct when the app is served from a
+    // sub-directory (GitHub Pages). It is "" for a root deployment.
+    <WouterRouter base={BASE_PATH}>
+      <Switch>
+        <Route path="/" component={Home} />
+        <Route path="/account" component={Account} />
+        <Route path="/checkout" component={Checkout} />
+        <Route path="/products/:handle" component={ProductDetail} />
+        <Route path="/404" component={NotFound} />
+        <Route component={NotFound} />
+      </Switch>
+    </WouterRouter>
   );
 }
 
@@ -36,6 +42,7 @@ function App() {
           <CustomerProvider>
             <CartProvider>
               <Toaster richColors position="bottom-right" />
+              <DemoNotice />
               <Router />
             </CartProvider>
           </CustomerProvider>

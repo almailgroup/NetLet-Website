@@ -153,6 +153,10 @@ function vitePluginManusDebugCollector(): Plugin {
 const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(), vitePluginManusDebugCollector()];
 
 export default defineConfig({
+  // Sub-directory deployments (GitHub Pages serves from `/<repo-name>/`) set
+  // VITE_BASE_PATH at build time. Unset — dev, and the Express server build —
+  // keeps the app at the domain root.
+  base: process.env.VITE_BASE_PATH || "/",
   plugins,
   resolve: {
     alias: {

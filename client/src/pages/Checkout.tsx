@@ -5,11 +5,12 @@
 import { useCart } from "@/contexts/CartContext";
 import { useCustomer } from "@/contexts/CustomerContext";
 import { CHECKOUT_IS_MOCK_ONLY, KUWAIT_PAYMENT_METHODS } from "@/lib/checkoutMock";
+import { appPath } from "@/lib/basePath";
+import { logoImage } from "@/lib/brandAssets";
 import { formatMoney } from "@/lib/format";
 import { kuwaitDeliveryZones } from "@shared/customer";
 import { ArrowLeft, Check, ChevronDown, LockKeyhole, MapPin, PackageCheck, ShoppingBag, Truck } from "lucide-react";
 
-const logoImage = "/manus-storage/netlet-logo-transparent_3d66ed60.png";
 const fieldClass = "type-body mt-2 h-11 w-full rounded-xl border border-[#d5dfeb] bg-[#f3f2ed] px-3 outline-none transition-shadow focus:shadow-[0_0_0_4px_rgba(20,52,203,.10)]";
 
 function PaymentMark({ id, label }: { id: string; label: string }) {
@@ -34,7 +35,7 @@ export default function Checkout() {
 
   return (
     <main className="type-body min-h-screen bg-[#f3f2ed] text-[#0a285a]">
-      <header className="border-b border-[#d5dfeb] bg-[#f3f2ed]/95"><div className="container flex h-[76px] items-center justify-between"><a href="/" aria-label="Return to NetLet home"><img src={logoImage} alt="NetLet" className="h-10 w-auto max-w-[126px] object-contain" /></a><div className="type-label hidden items-center gap-2 text-[#536b8c] sm:flex"><LockKeyhole className="size-4 text-[#f2683a]" /> Native checkout mockup · Kuwait</div><a href="/" className="type-control pressable flex items-center gap-1.5 rounded-full border border-[#d5dfeb] bg-white px-4 py-2.5 text-[#0a285a] hover:bg-[#e7edf5]"><ArrowLeft className="size-3.5" /> Continue shopping</a></div></header>
+      <header className="border-b border-[#d5dfeb] bg-[#f3f2ed]/95"><div className="container flex h-[76px] items-center justify-between"><a href={appPath("/")} aria-label="Return to NetLet home"><img src={logoImage} alt="NetLet" className="h-10 w-auto max-w-[126px] object-contain" /></a><div className="type-label hidden items-center gap-2 text-[#536b8c] sm:flex"><LockKeyhole className="size-4 text-[#f2683a]" /> Native checkout mockup · Kuwait</div><a href={appPath("/")} className="type-control pressable flex items-center gap-1.5 rounded-full border border-[#d5dfeb] bg-white px-4 py-2.5 text-[#0a285a] hover:bg-[#e7edf5]"><ArrowLeft className="size-3.5" /> Continue shopping</a></div></header>
 
       <div className="container py-8 sm:py-12"><div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="type-label tracking-[.16em] text-[#a44a2b] uppercase">Native NetLet checkout</p><h1 className="type-display mt-2 text-4xl sm:text-5xl">Delivery, the easier way.</h1><p className="type-body mt-3 max-w-xl text-[#536b8c]">A Kuwait-focused checkout experience designed to keep customers in NetLet from bag to confirmation.</p></div><div className="type-label inline-flex w-fit items-center gap-2 rounded-full bg-[#fff0ab] px-3 py-2 tracking-[.08em] text-[#0a285a] uppercase"><PackageCheck className="size-3.5" /> Payment mockup only</div></div>
 

@@ -3,11 +3,14 @@
  *
  * In a normal deployment these come from `/manus-storage/...`, proxied by
  * `server/_core/storageProxy.ts` against Manus Forge storage. A static build has
- * neither that route nor the API credentials it needs, so the demo falls back to
- * committed placeholders under `client/public/brand/`.
+ * neither that route nor the API credentials it needs, so the demo serves its own
+ * copies from `client/public/brand/` instead.
  *
- * To use the real artwork in the static demo, drop the files into
- * `client/public/brand/` and point the DEMO_* constants below at them.
+ * The logo is the real NetLet mark, committed to `client/public/brand/`. The
+ * footer variant is that same file with the navy wordmark repainted pearl, so it
+ * reads on the navy footer; the orange chevron is untouched. The hero and
+ * collection artwork are still placeholders — replace those files to use the
+ * real images.
  */
 import { appPath } from "@/lib/basePath";
 import { DEMO_MODE } from "@/lib/demoMode";
@@ -17,8 +20,8 @@ const STORAGE_FOOTER_LOGO =
   "/manus-storage/netlet-footer-white-transparent_a243ae75.png";
 const STORAGE_HERO = "/manus-storage/soukora-hero-living_ef30008d.jpg";
 
-const DEMO_LOGO = appPath("/brand/netlet-logo.svg");
-const DEMO_FOOTER_LOGO = appPath("/brand/netlet-logo-white.svg");
+const DEMO_LOGO = appPath("/brand/netlet-logo.png");
+const DEMO_FOOTER_LOGO = appPath("/brand/netlet-logo-white.png");
 const DEMO_HERO = appPath("/brand/hero.svg");
 
 export const logoImage = DEMO_MODE ? DEMO_LOGO : STORAGE_LOGO;

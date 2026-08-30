@@ -1,5 +1,7 @@
 import { useCart } from "@/contexts/CartContext";
 import { useCustomer } from "@/contexts/CustomerContext";
+import { appPath } from "@/lib/basePath";
+import { logoImage } from "@/lib/brandAssets";
 import { formatMoney } from "@/lib/format";
 import { trpc } from "@/lib/trpc";
 import { canUseGalleryKeyboard, galleryIndex } from "@shared/commerce/gallery";
@@ -22,7 +24,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useRoute } from "wouter";
 import { toast } from "sonner";
 
-const logoImage = "/manus-storage/netlet-logo-transparent_3d66ed60.png";
 
 async function shareProduct(product: Product) {
   const url = `${window.location.origin}/products/${encodeURIComponent(product.handle)}`;
@@ -42,7 +43,7 @@ function RelatedCard({ product }: { product: Product }) {
   const image = product.images[0];
   return (
     <article className="group min-w-[190px] overflow-hidden rounded-2xl border border-[#d5dfeb] bg-[#fffdf9] p-3 sm:min-w-0">
-      <button onClick={() => window.location.assign(`/products/${encodeURIComponent(product.handle)}`)} className="block w-full text-left">
+      <button onClick={() => window.location.assign(appPath(`/products/${encodeURIComponent(product.handle)}`))} className="block w-full text-left">
         <div className="relative overflow-hidden rounded-xl bg-[#e7edf5]">
           {image ? <img src={image.url} alt={image.altText ?? product.title} className="aspect-square w-full object-cover transition-transform duration-500 group-hover:scale-105" /> : <div className="aspect-square" />}
         </div>

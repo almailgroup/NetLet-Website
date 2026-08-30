@@ -1,0 +1,84 @@
+# Builds the client as a static design preview and publishes it to GitHub Pages.
+#
+# This deploys the FRONTEND ONLY. The Express/tRPC server in `server/` cannot run
+# on Pages, so the build sets VITE_DEMO_MODE and the app resolves every tRPC
+# procedure from local fixtures (client/src/lib/demoLink.ts). It is a design
+# preview, not a working storefront: no Shopify catalog, no real checkout, no auth.
+name: Deploy static demo to Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Allow one concurrent deployment; let an in-progress run finish so a published
+# page is never left half-written.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.4.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build static demo
+        env:
+          # Pages serves the project site from /<repo-name>/, so assets and the
+          # wouter router both need that prefix.
+          VITE_BASE_PATH: /${{ github.event.repository.name }}/
+          VITE_DEMO_MODE: "true"
+        run: pnpm exec vite build
+
+      - name: Point the favicon at a bundled asset
+        # The source favicon lives behind the authenticated /manus-storage proxy,
+        # which does not exist on Pages. Rewriting it here keeps the app's own
+        # index.html correct for the real full-stack deployment. The replacement
+        # must be base-absolute, not relative: this same file is copied to
+        # 404.html and served from nested paths like /products/<handle>.
+        run: |
+          sed -i "s#/manus-storage/netlet-logo-transparent_3d66ed60.png#/${{ github.event.repository.name }}/brand/netlet-logo.svg#" dist/public/index.html
+
+      - name: Drop the analytics tag
+        # VITE_ANALYTICS_* are unset here, so the placeholder would ship
+        # unsubstituted and fire a broken request on every page load.
+        run: sed -i '/umami/d' dist/public/index.html
+
+      - name: Add SPA fallback
+        # Pages has no rewrite rules. Serving index.html as 404.html lets wouter
+        # resolve deep links such as /products/<handle> on a cold load.
+        run: cp dist/public/index.html dist/public/404.html
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist/public
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

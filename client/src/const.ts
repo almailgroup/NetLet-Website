@@ -1,3 +1,5 @@
+import { DEMO_MODE } from "@/lib/demoMode";
+import { toast } from "sonner";
 import { OAUTH_STATE_COOKIE, encodeOAuthState } from "@shared/const";
 
 export { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
@@ -13,6 +15,17 @@ export { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 // with "invalid oauth state". It returns void by design, so there is no URL to
 // stash across renders.
 export const startLogin = () => {
+  // The static demo has no OAuth portal to redirect to and no callback endpoint
+  // to come back through, so sign-in explains itself and leaves the app in its
+  // guest state, which CustomerContext and CartContext already support.
+  if (DEMO_MODE) {
+    toast("Sign-in is disabled in this static preview.", {
+      description:
+        "Your bag and saved items still work — they are kept in this browser.",
+    });
+    return;
+  }
+
   const oauthPortalUrl = import.meta.env.VITE_OAUTH_PORTAL_URL;
   const appId = import.meta.env.VITE_APP_ID;
   const redirectUri = `${window.location.origin}/api/oauth/callback`;

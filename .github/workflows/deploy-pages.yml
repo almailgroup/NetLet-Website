@@ -55,7 +55,7 @@ jobs:
         # must be base-absolute, not relative: this same file is copied to
         # 404.html and served from nested paths like /products/<handle>.
         run: |
-          sed -i "s#/manus-storage/netlet-logo-transparent_3d66ed60.png#/${{ github.event.repository.name }}/brand/netlet-logo.svg#" dist/public/index.html
+          sed -i "s#/manus-storage/netlet-logo-transparent_3d66ed60.png#/${{ github.event.repository.name }}/brand/netlet-logo.png#" dist/public/index.html
 
       - name: Drop the analytics tag
         # VITE_ANALYTICS_* are unset here, so the placeholder would ship

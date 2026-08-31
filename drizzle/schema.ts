@@ -13,23 +13,30 @@
  * behaves as an upsert when the collision is caught by a unique key —
  * `customer_preferences.user_id` and the two composite uniques below.
  *
- * varchar widths stay at or below 191 characters wherever a column is indexed:
- * on utf8mb4 that is the longest value that fits MySQL's 767-byte index prefix
- * on older InnoDB defaults.
+ * varchar widths are kept deliberate rather than unbounded. Postgres would not
+ * require them, but a declared width documents the field and keeps the schema
+ * portable.
  */
 import { relations } from "drizzle-orm";
 import {
   boolean,
   index,
-  int,
-  mysqlEnum,
-  mysqlTable,
+  integer,
+  pgEnum,
+  pgTable,
+  serial,
   text,
   timestamp,
   uniqueIndex,
   varchar,
-} from "drizzle-orm/mysql-core";
+} from "drizzle-orm/pg-core";
 import { notificationKinds } from "../shared/customer";
+
+/* Postgres enums are named types created in the database, so they are declared
+   once here rather than inline on the column as MySQL allows. */
+export const userRole = pgEnum("user_role", ["user", "admin"]);
+export const localeCode = pgEnum("locale_code", ["en", "ar"]);
+export const notificationKind = pgEnum("notification_kind", notificationKinds);
 
 /**
  * Shoppers, identified by email address.
@@ -39,53 +46,53 @@ import { notificationKinds } from "../shared/customer";
  * a password. The address is stored lowercased so that a unique index is
  * genuinely case-insensitive regardless of the column's collation.
  */
-export const users = mysqlTable(
+export const users = pgTable(
   "users",
   {
-    id: int("id").autoincrement().primaryKey(),
+    id: serial("id").primaryKey(),
     /** Login identifier. Normalised to lowercase before it ever reaches here. */
     email: varchar("email", { length: 320 }).notNull(),
     /** scrypt digest with its parameters embedded, so the cost can be raised later. */
     passwordHash: varchar("password_hash", { length: 255 }).notNull(),
     /** Optional display name; the shopper may never supply one. */
     name: varchar("name", { length: 255 }),
-    role: mysqlEnum("role", ["user", "admin"]).notNull().default("user"),
-    lastSignedIn: timestamp("last_signed_in").notNull().defaultNow(),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
+    role: userRole("role").notNull().default("user"),
+    lastSignedIn: timestamp("last_signed_in", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
   },
   table => [uniqueIndex("users_email_unique").on(table.email)]
 );
 
 /** One row per shopper: locale, delivery area, and the active Shopify cart. */
-export const customerPreferences = mysqlTable(
+export const customerPreferences = pgTable(
   "customer_preferences",
   {
-    id: int("id").autoincrement().primaryKey(),
-    userId: int("user_id")
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    locale: mysqlEnum("locale", ["en", "ar"]).notNull().default("en"),
+    locale: localeCode("locale").notNull().default("en"),
     /** Governorate id from `shared/customer.ts`; null until the shopper picks. */
     deliveryZoneId: varchar("delivery_zone_id", { length: 64 }),
     /** Opaque Shopify cart id, so a bag survives across devices. */
     shopifyCartId: varchar("shopify_cart_id", { length: 255 }),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
   },
   table => [uniqueIndex("customer_preferences_user_id_unique").on(table.userId)]
 );
 
 /** Saved ("wishlisted") products. The product id is the storefront handle/id. */
-export const savedProducts = mysqlTable(
+export const savedProducts = pgTable(
   "saved_products",
   {
-    id: int("id").autoincrement().primaryKey(),
-    userId: int("user_id")
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     productId: varchar("product_id", { length: 191 }).notNull(),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   table => [
     uniqueIndex("saved_products_user_product_unique").on(table.userId, table.productId),
@@ -94,18 +101,18 @@ export const savedProducts = mysqlTable(
 );
 
 /** Per-shopper notification opt-ins, one row per notification kind. */
-export const customerNotificationPreferences = mysqlTable(
+export const customerNotificationPreferences = pgTable(
   "customer_notification_preferences",
   {
-    id: int("id").autoincrement().primaryKey(),
-    userId: int("user_id")
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     /** Kinds come from `shared/customer.ts` so the enum cannot drift. */
-    kind: mysqlEnum("kind", notificationKinds).notNull(),
+    kind: notificationKind("kind").notNull(),
     enabled: boolean("enabled").notNull().default(true),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
   },
   table => [
     uniqueIndex("customer_notification_user_kind_unique").on(table.userId, table.kind),
@@ -119,11 +126,11 @@ export const customerNotificationPreferences = mysqlTable(
  * courier/order event in the ordinary way and are free to change as the real
  * order source is wired up.
  */
-export const orderTrackingEvents = mysqlTable(
+export const orderTrackingEvents = pgTable(
   "order_tracking_events",
   {
-    id: int("id").autoincrement().primaryKey(),
-    userId: int("user_id")
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     /** Order this event belongs to, as identified by the upstream system. */
@@ -132,8 +139,8 @@ export const orderTrackingEvents = mysqlTable(
     /** Human-readable detail, e.g. a courier's note. */
     message: text("message"),
     /** When the event happened upstream, which is not when we recorded it. */
-    occurredAt: timestamp("occurred_at").notNull().defaultNow(),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   table => [
     index("order_tracking_user_id_idx").on(table.userId),

@@ -1,5 +1,6 @@
 import { and, eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 import {
   customerNotificationPreferences,
   customerPreferences,
@@ -12,11 +13,19 @@ import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
-// Lazily create the drizzle instance so local tooling can run without a DB.
+/**
+ * Lazily create the drizzle instance, so tests and local tooling run without a
+ * database and every query path degrades to a no-op instead of throwing.
+ *
+ * `prepare: false` is required if DATABASE_URL points at a transaction-mode
+ * pooler (Supabase's port 6543), which cannot carry prepared statements across
+ * pooled connections. It costs little on a direct connection, so it is set
+ * unconditionally rather than left as a trap for whoever swaps the URL.
+ */
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      _db = drizzle(postgres(process.env.DATABASE_URL, { prepare: false }));
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
@@ -65,8 +74,21 @@ export async function createUser(input: {
   return (await getUserByEmail(email)) ?? null;
 }
 
-function isDuplicateKeyError(error: unknown): boolean {
-  return typeof error === "object" && error !== null && "code" in error && (error as { code?: string }).code === "ER_DUP_ENTRY";
+/**
+ * Postgres unique-violation, SQLSTATE 23505.
+ *
+ * Drizzle wraps driver errors in a DrizzleQueryError, so the SQLSTATE is on the
+ * `cause`, not the error itself — checking the top level alone silently never
+ * matches, and a duplicate registration surfaces as a 500 instead of a clean
+ * "already registered". The chain is walked because the depth is drizzle's
+ * implementation detail, not a contract.
+ */
+export function isDuplicateKeyError(error: unknown): boolean {
+  for (let current: unknown = error, depth = 0; current && depth < 5; depth++) {
+    if (typeof current === "object" && (current as { code?: string }).code === "23505") return true;
+    current = (current as { cause?: unknown }).cause;
+  }
+  return false;
 }
 
 export async function getUserByEmail(email: string): Promise<User | undefined> {
@@ -102,7 +124,10 @@ export async function upsertCustomerProfile(
 ) {
   const db = await getDb();
   if (!db) return undefined;
-  await db.insert(customerPreferences).values({ userId, ...patch }).onDuplicateKeyUpdate({ set: patch });
+  await db
+    .insert(customerPreferences)
+    .values({ userId, ...patch })
+    .onConflictDoUpdate({ target: customerPreferences.userId, set: patch });
   return getCustomerProfile(userId);
 }
 
@@ -117,7 +142,11 @@ export async function setSavedProduct(userId: number, productId: string, saved: 
   const db = await getDb();
   if (!db) return [];
   if (saved) {
-    await db.insert(savedProducts).values({ userId, productId }).onDuplicateKeyUpdate({ set: { productId } });
+    // Already saved is success, not a conflict to resolve.
+    await db
+      .insert(savedProducts)
+      .values({ userId, productId })
+      .onConflictDoNothing({ target: [savedProducts.userId, savedProducts.productId] });
   } else {
     await db.delete(savedProducts).where(and(eq(savedProducts.userId, userId), eq(savedProducts.productId, productId)));
   }
@@ -137,7 +166,13 @@ export async function setNotificationPreference(
 ) {
   const db = await getDb();
   if (!db) return [];
-  await db.insert(customerNotificationPreferences).values({ userId, kind, enabled }).onDuplicateKeyUpdate({ set: { enabled } });
+  await db
+    .insert(customerNotificationPreferences)
+    .values({ userId, kind, enabled })
+    .onConflictDoUpdate({
+      target: [customerNotificationPreferences.userId, customerNotificationPreferences.kind],
+      set: { enabled },
+    });
   return listNotificationPreferences(userId);
 }
 

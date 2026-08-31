@@ -17,7 +17,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { isShopifyConfigured, listProducts } from "./_core/shopify";
+import { isShopifyConfigured, listProducts } from "./shopify";
 
 const configured = isShopifyConfigured();
 

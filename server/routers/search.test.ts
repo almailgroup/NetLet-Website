@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { parseRefinedSearch } from "./routers/search";
+import { parseRefinedSearch } from "./search";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -16,7 +16,7 @@ afterEach(() => {
 async function callerWithKey(apiKey?: string) {
   if (apiKey) vi.stubEnv("MISTRAL_API_KEY", apiKey);
   vi.resetModules();
-  const { searchRouter } = await import("./routers/search");
+  const { searchRouter } = await import("./search");
   return searchRouter.createCaller({} as never);
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeProduct } from "./_core/shopifyNormalize";
+import { normalizeProduct } from "./shopifyNormalize";
 
 describe("Shopify structured product attributes", () => {
   it("normalizes non-empty custom metafields into readable product attributes", () => {

@@ -14,6 +14,9 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    include: ["server/**/*.test.ts", "server/**/*.spec.ts"],
+    // Every layer, so a test cannot be silently skipped by living beside the
+    // code it covers. The previous server-only glob is why shared/ tests never
+    // ran and why unrelated suites were filed under server/.
+    include: ["{server,shared,client}/**/*.{test,spec}.{ts,tsx}"],
   },
 });

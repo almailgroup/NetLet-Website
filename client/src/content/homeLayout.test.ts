@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { categoryRail, editorialUpdates, footerGroups, homeRailDefinitions } from "../client/src/content/homeLayout";
+import { categoryRail, editorialUpdates, footerGroups, homeRailDefinitions } from "./homeLayout";
 
 describe("NetLet home layout content", () => {
   it("defines the requested marketplace rail hierarchy", () => {

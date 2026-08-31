@@ -1,9 +1,20 @@
-# Builds the client as a static design preview and publishes it to GitHub Pages.
+# Builds the client as a static design preview and publishes it to the
+# `gh-pages` branch, which GitHub Pages then serves.
 #
-# This deploys the FRONTEND ONLY. The Express/tRPC server in `server/` cannot run
-# on Pages, so the build sets VITE_DEMO_MODE and the app resolves every tRPC
+# Pages is configured as "Deploy from a branch" for this repository, and that
+# mode serves a branch's files verbatim with no build step. Pointing it at a
+# source branch therefore 404s: the repository root holds TypeScript, not an
+# index.html. This workflow does the building and commits only the built output
+# to `gh-pages`, so the branch Pages serves contains a real site.
+#
+# Repository setting this expects:
+#   Settings -> Pages -> Source: "Deploy from a branch"
+#                        Branch: gh-pages  /  (root)
+#
+# This deploys the FRONTEND ONLY. The Express/tRPC server in `server/` cannot
+# run on Pages, so the build sets VITE_DEMO_MODE and the app resolves every tRPC
 # procedure from local fixtures (client/src/lib/demoLink.ts). It is a design
-# preview, not a working storefront: no Shopify catalog, no real checkout, no auth.
+# preview, not a working storefront: no Shopify catalog, no checkout, no auth.
 name: Deploy static demo to Pages
 
 on:
@@ -11,19 +22,16 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# Allow one concurrent deployment; let an in-progress run finish so a published
-# page is never left half-written.
 concurrency:
   group: pages
   cancel-in-progress: false
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  # Needed to push the built output to the gh-pages branch.
+  contents: write
 
 jobs:
-  build:
+  build-and-publish:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -67,18 +75,22 @@ jobs:
         # resolve deep links such as /products/<handle> on a cold load.
         run: cp dist/public/index.html dist/public/404.html
 
-      - uses: actions/configure-pages@v5
+      - name: Disable Jekyll
+        # Branch-served Pages run the output through Jekyll, which strips paths
+        # beginning with an underscore. Vite is free to emit such names, so opt
+        # out rather than depend on it never doing so.
+        run: touch dist/public/.nojekyll
 
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: dist/public
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Publish to gh-pages
+        # Force-pushed as a single orphan commit: the branch is build output, so
+        # its history has no value and is not worth growing the repository for.
+        run: |
+          cd dist/public
+          git init -q
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -qm "Build ${{ github.sha }}"
+          git push -q --force \
+            "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" \
+            HEAD:gh-pages

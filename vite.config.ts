@@ -150,14 +150,44 @@ function vitePluginManusDebugCollector(): Plugin {
   };
 }
 
-const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(), vitePluginManusDebugCollector()];
+/**
+ * Strips the Manus dev tooling's public assets from a production build.
+ * `debug-collector.js` lives in publicDir so the dev server can serve it, which
+ * means Vite copies it into every build even though only dev injects the tag.
+ */
+function stripManusPublicAssets(): Plugin {
+  return {
+    name: "strip-manus-public-assets",
+    apply: "build",
+    closeBundle() {
+      fs.rmSync(path.resolve(import.meta.dirname, "dist/public/__manus__"), { recursive: true, force: true });
+    },
+  };
+}
 
-export default defineConfig({
+/**
+ * The Manus editor tooling is dev-only.
+ *
+ * `vitePluginManusRuntime` inlines a self-contained runtime — including its own
+ * copy of React — as a ~367KB blocking <script> in index.html. In a production
+ * build that is dead weight larger than the app bundle itself, parsed on every
+ * page load and duplicated into 404.html. `jsxLocPlugin` likewise only exists to
+ * annotate JSX with source locations for the editor.
+ *
+ * Set MANUS_RUNTIME=1 to force them back into a build if the Manus platform
+ * ever needs them there.
+ */
+const manusTooling = (isBuild: boolean) =>
+  !isBuild || process.env.MANUS_RUNTIME === "1"
+    ? [jsxLocPlugin(), vitePluginManusRuntime(), vitePluginManusDebugCollector()]
+    : [stripManusPublicAssets()];
+
+export default defineConfig(({ command }) => ({
   // Sub-directory deployments (GitHub Pages serves from `/<repo-name>/`) set
   // VITE_BASE_PATH at build time. Unset — dev, and the Express server build —
   // keeps the app at the domain root.
   base: process.env.VITE_BASE_PATH || "/",
-  plugins,
+  plugins: [react(), tailwindcss(), ...manusTooling(command === "build")],
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "client", "src"),
@@ -188,4 +218,4 @@ export default defineConfig({
       deny: ["**/.*"],
     },
   },
-});
+}));

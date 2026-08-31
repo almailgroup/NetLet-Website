@@ -63,6 +63,20 @@ function IconButton({ label, children, onClick, className = "" }: { label: strin
   return <button aria-label={label} title={label} onClick={onClick} className={`glass pressable grid size-10 place-items-center rounded-full ${className}`}>{children}</button>;
 }
 
+/**
+ * Header control in the marketplace convention: an icon, then a stacked
+ * caption/value pair that collapses to the icon alone on narrower viewports.
+ */
+function HeaderAction({ icon, caption, value, onClick, label, badge, tone = "quiet" }: { icon: React.ReactNode; caption: string; value: string; onClick: () => void; label: string; badge?: number; tone?: "quiet" | "primary" }) {
+  return <button onClick={onClick} aria-label={label} title={label} className={`pressable flex h-12 shrink-0 items-center rounded-2xl px-3 ${badge !== undefined ? "gap-3.5" : "gap-2.5"} ${tone === "primary" ? "glass glass-navy" : "glass"}`}>
+    <span className="relative grid shrink-0 place-items-center">{icon}{badge !== undefined && <span className="absolute -right-2 -top-2.5 grid min-w-4 place-items-center rounded-full bg-[#f2683a] px-1 text-[9px] font-extrabold text-white">{badge}</span>}</span>
+    <span className="hidden max-w-[128px] text-left leading-[1.15] xl:block">
+      <span className={`block truncate text-[10px] font-semibold ${tone === "primary" ? "text-white" : "text-[#536b8c]"}`}>{caption}</span>
+      <span className="block truncate text-xs font-extrabold">{value}</span>
+    </span>
+  </button>;
+}
+
 async function shareProduct(product: Product) {
   const shareUrl = `${window.location.origin}/products/${encodeURIComponent(product.handle)}`;
   const shareData = { title: product.title, text: `Take a look at ${product.title} on NetLet.`, url: shareUrl };
@@ -92,14 +106,6 @@ function DeliveryZoneDialog({ open, onClose }: { open: boolean; onClose: () => v
       <div className="mt-6 grid gap-2 sm:grid-cols-2">{kuwaitDeliveryZones.map(zone => <button key={zone.id} onClick={() => { setDeliveryZoneId(zone.id); onClose(); }} className={`pressable rounded-2xl border p-4 text-left ${deliveryZoneId === zone.id ? "border-[#f2683a] bg-[#fff7e3]" : "border-[#d5dfeb] bg-white hover:border-[#aac0da]"}`}><span className="block text-sm font-extrabold text-[#0a285a]">{isArabic ? zone.labelAr : zone.label}</span><span className="mt-1 block text-[10px] font-semibold text-[#778ba6]">{isArabic ? "التفاصيل بانتظار الإعداد" : zone.estimateLabel}</span></button>)}</div>
       <p className="mt-5 flex items-start gap-2 rounded-xl bg-[#fff0ab] p-3 text-xs leading-5 text-[#705523]"><Truck className="mt-0.5 size-4 shrink-0" />{labels.deliverySetup}. No fee or ETA has been set yet.</p>
     </section>
-  </div>;
-}
-
-function CustomerQuickControls({ onDelivery }: { onDelivery: () => void }) {
-  const { deliveryZone, isArabic, labels, toggleLocale } = useCustomer();
-  return <div className="ml-auto hidden w-max max-w-[calc(100vw-2rem)] shrink-0 items-center justify-end gap-3 lg:flex" dir="ltr">
-    <button onClick={onDelivery} className="glass pressable flex max-w-[230px] items-center gap-2 whitespace-nowrap rounded-full px-3.5 py-2 text-xs font-bold"><MapPin className="size-3.5 shrink-0 text-[#f2683a]" /><span className="truncate">{labels.delivery} {deliveryZone ? (isArabic ? deliveryZone.labelAr : deliveryZone.label) : (isArabic ? "اختر منطقتك" : "select area")}</span></button>
-    <button onClick={toggleLocale} className="glass pressable flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 py-2 text-xs font-bold"><Globe2 className="size-3.5 text-[#f2683a]" />{labels.language}</button>
   </div>;
 }
 
@@ -188,7 +194,7 @@ export default function Home() {
   const [catalogSort, setCatalogSort] = useState<CatalogSort>("catalog");
   const { user, loading: authLoading, isAuthenticated, logout } = useAuth();
   const { itemCount, openCart, addItem, loading: cartLoading } = useCart();
-  const { savedIds: saved, toggleSaved: togglePersistentSaved, deliveryZone } = useCustomer();
+  const { savedIds: saved, toggleSaved: togglePersistentSaved, deliveryZone, isArabic, labels, toggleLocale } = useCustomer();
   const { data: catalog = [], isLoading: catalogLoading, error: catalogError, refetch } = trpc.commerce.products.list.useQuery({ first: 24 });
 
   const visibleProducts = useMemo(() => {
@@ -211,7 +217,27 @@ export default function Home() {
   const openProduct = (product: Product) => window.location.assign(appPath(`/products/${encodeURIComponent(product.handle)}`));
 
   return <main id="top" className="min-h-screen overflow-x-hidden bg-[#f3f2ed] text-[#0a285a]">
-    <header className="sticky top-0 z-40 border-b border-[#d5dfeb] bg-[#f3f2ed]/95 backdrop-blur-xl"><div className="container relative flex h-[68px] items-center justify-center gap-3 lg:h-[76px] lg:justify-start lg:gap-6"><div className="absolute left-4 lg:static lg:hidden"><IconButton label="Open menu" onClick={() => setMenuOpen(true)}><Menu className="size-6" /></IconButton></div><Logo /><div className="hidden min-w-0 flex-1 lg:block"><LiveSearch catalog={catalog} value={search} onChange={setSearch} onSelectProduct={openProduct} /></div><div className="hidden items-center gap-2 lg:flex"><IconButton label="Notifications" onClick={() => toast("Notifications will appear here once your account is connected.")}><Bell className="size-[19px]" /></IconButton><IconButton label="Saved items" onClick={() => toast(`${saved.length} item${saved.length === 1 ? "" : "s"} saved for later.`)}><Heart className="size-[19px]" /></IconButton><IconButton label={isAuthenticated ? "Sign out" : "Sign in"} onClick={accountAction}>{isAuthenticated ? <LogOut className="size-[19px]" /> : <UserRound className="size-[19px]" />}</IconButton></div><button onClick={openCart} className="glass glass-navy pressable relative ml-auto hidden h-11 shrink-0 items-center gap-2 rounded-full px-3.5 text-xs font-bold sm:px-4 lg:ml-3 lg:flex"><ShoppingBag className="size-[18px]" /><span className="hidden sm:inline">Bag</span><span className="grid size-5 place-items-center rounded-full bg-[#f2683a] text-[10px]">{itemCount}</span></button></div><div className="container pb-3 lg:hidden"><LiveSearch catalog={catalog} value={search} onChange={setSearch} onSelectProduct={openProduct} /></div><nav className="container hidden h-12 items-center gap-2 lg:flex" aria-label="Primary navigation">{categoryRail.map((category, index) => <button key={category.query} onClick={() => selectCategory(category.query)} className={`pressable rounded-full px-3 py-2 text-xs font-semibold ${index === 0 ? "flex items-center gap-2 font-bold" : ""} ${activeCategory === category.query ? "glass glass-navy" : "glass !bg-white/35 !text-[#536b8c]"}`}>{index === 0 && <Menu className="size-4" />}{index === 0 ? "All departments" : category.label}</button>)}<CustomerQuickControls onDelivery={() => setDeliveryOpen(true)} /></nav></header>
+    <header className="sticky top-0 z-40 border-b border-[#d5dfeb] bg-[#f3f2ed]/95 backdrop-blur-xl">
+      {/* Primary bar: logo, a search field that takes all remaining width, then
+          the account cluster — the layout marketplaces converge on. */}
+      <div className="container relative flex h-[68px] items-center gap-3 lg:h-[76px] lg:gap-5">
+        <div className="absolute left-4 lg:static lg:hidden"><IconButton label="Open menu" onClick={() => setMenuOpen(true)}><Menu className="size-6" /></IconButton></div>
+        <div className="mx-auto lg:mx-0"><Logo /></div>
+        <div className="hidden min-w-0 flex-1 lg:block"><LiveSearch catalog={catalog} value={search} onChange={setSearch} onSelectProduct={openProduct} /></div>
+        <div className="hidden shrink-0 items-center gap-1.5 lg:flex">
+          <IconButton label="Notifications" onClick={() => toast("Notifications will appear here once your account is connected.")}><Bell className="size-[19px]" /></IconButton>
+          <IconButton label="Saved items" onClick={() => toast(`${saved.length} item${saved.length === 1 ? "" : "s"} saved for later.`)}><Heart className="size-[19px]" /></IconButton>
+          <HeaderAction label="Choose delivery area" onClick={() => setDeliveryOpen(true)} icon={<MapPin className="size-[19px] text-[#f2683a]" />} caption={labels.delivery} value={deliveryZone ? (isArabic ? deliveryZone.labelAr : deliveryZone.label) : "select area"} />
+          <HeaderAction label="Change language" onClick={toggleLocale} icon={<Globe2 className="size-[19px] text-[#f2683a]" />} caption={isArabic ? "AR /" : "EN /"} value="KWD" />
+          <HeaderAction label={isAuthenticated ? "Sign out" : "Sign in"} onClick={accountAction} icon={isAuthenticated ? <LogOut className="size-[19px]" /> : <UserRound className="size-[19px]" />} caption="Welcome" value={isAuthenticated ? (user?.name ? `Hi, ${user.name}` : "Sign out") : "Sign in"} />
+          <HeaderAction label="Open your bag" onClick={openCart} tone="primary" badge={itemCount} icon={<ShoppingBag className="size-[19px]" />} caption={labels.bag} value={itemCount === 1 ? "1 item" : `${itemCount} items`} />
+        </div>
+        <button onClick={openCart} aria-label="Open your bag" className="glass glass-navy pressable absolute right-4 grid size-10 place-items-center rounded-full lg:hidden"><ShoppingBag className="size-[18px]" /><span className="absolute -right-1 -top-1 grid size-4 place-items-center rounded-full bg-[#f2683a] text-[9px] font-extrabold text-white">{itemCount}</span></button>
+      </div>
+      <div className="container pb-3 lg:hidden"><LiveSearch catalog={catalog} value={search} onChange={setSearch} onSelectProduct={openProduct} /></div>
+      {/* Secondary bar: departments only, so the row reads as one rail. */}
+      <nav className="container hidden h-12 items-center gap-2 lg:flex" aria-label="Primary navigation">{categoryRail.map((category, index) => <button key={category.query} onClick={() => selectCategory(category.query)} className={`pressable rounded-full px-3 py-2 text-xs font-semibold ${index === 0 ? "flex items-center gap-2 font-bold" : ""} ${activeCategory === category.query ? "glass glass-navy" : "glass !bg-white/35 !text-[#536b8c]"}`}>{index === 0 && <Menu className="size-4" />}{index === 0 ? "All departments" : category.label}</button>)}</nav>
+    </header>
 
     {menuOpen && <div className="netlet-menu-scrim fixed inset-0 z-50 bg-[#061b3b]/30 backdrop-blur-sm lg:hidden" onClick={() => setMenuOpen(false)}><aside className="netlet-menu-panel h-full w-[82%] max-w-sm bg-[#f3f2ed] px-5 py-7 shadow-2xl" onClick={(event) => event.stopPropagation()}><div className="flex items-center justify-between"><Logo /><IconButton label="Close menu" onClick={() => setMenuOpen(false)}><X /></IconButton></div><div className="mt-10 space-y-1">{categoryRail.map((category) => <button key={category.query} onClick={() => { selectCategory(category.query); setMenuOpen(false); }} className="glass pressable mb-1 block w-full rounded-xl px-4 py-4 text-left text-sm font-bold">{category.label}</button>)}</div><button onClick={accountAction} className="glass glass-navy pressable mt-7 flex w-full items-center justify-center gap-2 rounded-2xl p-4 text-sm font-bold">{isAuthenticated ? <LogOut className="size-4" /> : <UserRound className="size-4" />}{isAuthenticated ? `Sign out${user?.name ? `, ${user.name}` : ""}` : "Sign in to NetLet"}</button></aside></div>}
 

@@ -1,17 +1,17 @@
 /**
  * NetLet database schema.
  *
- * Reconstructed from the application's own usage — `server/db.ts`, the customer
- * router, and `server/_core/sdk.ts` — after the original file was lost. Column
- * names, nullability, and every uniqueness constraint are pinned by real call
- * sites; widths and indexes are chosen to suit the data.
+ * Reconstructed from the application's own usage after the original file was
+ * lost, then reworked when authentication moved in-house: `users` is now keyed
+ * by email and carries its own password digest, rather than mirroring an
+ * external OAuth provider's subject id.
  *
- * Two constraints are load-bearing rather than cosmetic. `upsertUser` and
- * `upsertCustomerProfile` both rely on `onDuplicateKeyUpdate`, which only
- * behaves as an upsert when the row it collides with is caught by a unique
- * key — `users.open_id` and `customer_preferences.user_id` respectively.
- * `savedProducts` and `customerNotificationPreferences` depend on the same
- * mechanism through their composite uniques.
+ * Several constraints are load-bearing rather than cosmetic. `users.email` is
+ * what makes registration reject a duplicate account instead of creating a
+ * second one, and `upsertCustomerProfile`, `setSavedProduct` and
+ * `setNotificationPreference` all rely on `onDuplicateKeyUpdate`, which only
+ * behaves as an upsert when the collision is caught by a unique key —
+ * `customer_preferences.user_id` and the two composite uniques below.
  *
  * varchar widths stay at or below 191 characters wherever a column is indexed:
  * on utf8mb4 that is the longest value that fits MySQL's 767-byte index prefix
@@ -31,23 +31,30 @@ import {
 } from "drizzle-orm/mysql-core";
 import { notificationKinds } from "../shared/customer";
 
-/** Shoppers, keyed by the OAuth provider's stable subject identifier. */
+/**
+ * Shoppers, identified by email address.
+ *
+ * Identity lives here rather than with an external provider: `passwordHash`
+ * holds a self-describing scrypt digest (see `server/_core/password.ts`), never
+ * a password. The address is stored lowercased so that a unique index is
+ * genuinely case-insensitive regardless of the column's collation.
+ */
 export const users = mysqlTable(
   "users",
   {
     id: int("id").autoincrement().primaryKey(),
-    /** Provider subject id. The upsert in `db.upsertUser` keys on this. */
-    openId: varchar("open_id", { length: 191 }).notNull(),
-    /** Profile fields are nullable: the provider may return none of them. */
+    /** Login identifier. Normalised to lowercase before it ever reaches here. */
+    email: varchar("email", { length: 320 }).notNull(),
+    /** scrypt digest with its parameters embedded, so the cost can be raised later. */
+    passwordHash: varchar("password_hash", { length: 255 }).notNull(),
+    /** Optional display name; the shopper may never supply one. */
     name: varchar("name", { length: 255 }),
-    email: varchar("email", { length: 320 }),
-    loginMethod: varchar("login_method", { length: 64 }),
     role: mysqlEnum("role", ["user", "admin"]).notNull().default("user"),
     lastSignedIn: timestamp("last_signed_in").notNull().defaultNow(),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
   },
-  table => [uniqueIndex("users_open_id_unique").on(table.openId)]
+  table => [uniqueIndex("users_email_unique").on(table.email)]
 );
 
 /** One row per shopper: locale, delivery area, and the active Shopify cart. */

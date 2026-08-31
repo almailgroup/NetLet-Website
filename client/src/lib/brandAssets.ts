@@ -1,52 +1,27 @@
 /**
- * Brand artwork paths, resolved once for the whole app.
+ * Brand artwork, resolved once for the whole app.
  *
- * In a normal deployment these come from `/manus-storage/...`, proxied by
- * `server/_core/storageProxy.ts` against Manus Forge storage. A static build has
- * neither that route nor the API credentials it needs, so the demo serves its own
- * copies from `client/public/brand/` instead.
+ * These were previously proxied from Manus Forge storage via `/manus-storage/…`.
+ * That proxy is gone, so the files are served from `client/public/brand/` — the
+ * only source now, in every build.
  *
- * The logo is the real NetLet mark, committed to `client/public/brand/`. The
- * footer variant is that same file with the navy wordmark repainted pearl, so it
- * reads on the navy footer; the orange chevron is untouched. The hero and
- * collection artwork are still placeholders — replace those files to use the
- * real images.
+ * The logo is the real NetLet mark. `netlet-logo-white.png` is that same file
+ * with the navy wordmark repainted pearl so it reads on the navy footer, the
+ * orange chevron untouched. The hero, collection and QR artwork are still
+ * placeholders: replace the files in place and nothing else needs to change.
  */
 import { appPath } from "@/lib/basePath";
-import { DEMO_MODE } from "@/lib/demoMode";
 
-const STORAGE_LOGO = "/manus-storage/netlet-logo-transparent_3d66ed60.png";
-const STORAGE_FOOTER_LOGO =
-  "/manus-storage/netlet-footer-white-transparent_a243ae75.png";
-const STORAGE_HERO = "/manus-storage/soukora-hero-living_ef30008d.jpg";
+export const logoImage = appPath("/brand/netlet-logo.png");
+export const footerLogoImage = appPath("/brand/netlet-logo-white.png");
+export const heroImage = appPath("/brand/hero.svg");
 
-const DEMO_LOGO = appPath("/brand/netlet-logo.png");
-const DEMO_FOOTER_LOGO = appPath("/brand/netlet-logo-white.png");
-const DEMO_HERO = appPath("/brand/hero.svg");
-
-export const logoImage = DEMO_MODE ? DEMO_LOGO : STORAGE_LOGO;
-export const footerLogoImage = DEMO_MODE
-  ? DEMO_FOOTER_LOGO
-  : STORAGE_FOOTER_LOGO;
-export const heroImage = DEMO_MODE ? DEMO_HERO : STORAGE_HERO;
-
-/**
- * QR panel artwork for the app-download header action. Structurally a QR code
- * but encodes nothing, so it cannot resolve anywhere unintended; replace the
- * file with the real code when there is one. Committed rather than proxied,
- * since it has no /manus-storage counterpart.
- */
+/** Placeholder QR for the app-download panel: reads as a code, decodes to nothing. */
 export const qrImage = appPath("/brand/qr-placeholder.svg");
 
 /** Artwork for the home-page rail support cards, in tech / home / style order. */
-export const collectionImages = DEMO_MODE
-  ? [
-      appPath("/brand/collection-tech.svg"),
-      appPath("/brand/collection-home.svg"),
-      appPath("/brand/collection-style.svg"),
-    ]
-  : [
-      "/manus-storage/soukora-tech-collection_ec5980d5.jpg",
-      "/manus-storage/soukora-home-collection_e04322e4.jpg",
-      "/manus-storage/soukora-style-collection_696fb7a8.jpg",
-    ];
+export const collectionImages = [
+  appPath("/brand/collection-tech.svg"),
+  appPath("/brand/collection-home.svg"),
+  appPath("/brand/collection-style.svg"),
+];

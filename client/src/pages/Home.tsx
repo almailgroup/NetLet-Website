@@ -7,7 +7,8 @@ import { LiveSearch } from "@/components/LiveSearch";
 import { categoryRail, editorialUpdates, footerGroups, homeRailDefinitions } from "@/content/homeLayout";
 import { useCart } from "@/contexts/CartContext";
 import { useCustomer } from "@/contexts/CustomerContext";
-import { startLogin } from "@/const";
+import AuthDialog from "@/components/AuthDialog";
+import { DEMO_MODE } from "@/lib/demoMode";
 import { formatMoney } from "@/lib/format";
 import { trpc } from "@/lib/trpc";
 import { filterAndSortCatalog, type AvailabilityFilter, type CatalogSort } from "@shared/commerce/catalog";
@@ -224,6 +225,10 @@ function DealsSurface({ loading, error, product, saved, onSave, onDetails, onAdd
 export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [deliveryOpen, setDeliveryOpen] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
+  const openAuth = () => DEMO_MODE
+    ? toast("Sign-in is disabled in this static preview.", { description: "Your bag and saved items still work — they are kept in this browser." })
+    : setAuthOpen(true);
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
   const [availabilityFilter, setAvailabilityFilter] = useState<AvailabilityFilter>("all");
@@ -248,11 +253,12 @@ export default function Home() {
   const showAll = () => { setSearch(""); setActiveCategory("All"); setAvailabilityFilter("all"); setCatalogSort("catalog"); window.setTimeout(() => document.getElementById("popular")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0); };
   const toggleSaved = (id: string, title: string) => { const isSaved = saved.includes(id); togglePersistentSaved(id); toast(isSaved ? `${title} removed from saved` : `${title} saved for later`); };
   const addProduct = async (product: Product) => { const variant = product.variants[0]; if (!variant?.availableForSale) return toast.error("This item is currently unavailable."); try { await addItem(variant.id); toast.success(`${product.title} added to your bag`); } catch { toast.error("We couldn't add that item just now. Please try again."); } };
-  const accountAction = () => { if (authLoading) return; if (isAuthenticated) { void logout().then(() => toast.success("You’re signed out of NetLet.")); } else startLogin(); };
+  const accountAction = () => { if (authLoading) return; if (isAuthenticated) { void logout().then(() => toast.success("You’re signed out of NetLet.")); } else openAuth(); };
   const firstProduct = visibleProducts[0] ?? catalog[0];
   const openProduct = (product: Product) => window.location.assign(appPath(`/products/${encodeURIComponent(product.handle)}`));
 
   return <main id="top" className="min-h-screen overflow-x-hidden bg-[#f3f2ed] text-[#0a285a]">
+    <AuthDialog open={authOpen} onClose={() => setAuthOpen(false)} />
     <header className="sticky top-0 z-40 border-b border-[#d5dfeb] bg-[#f3f2ed]/95 backdrop-blur-xl">
       {/* Primary bar: logo, a search field that takes all remaining width, then
           the account cluster — the layout marketplaces converge on. */}

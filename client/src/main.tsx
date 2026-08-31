@@ -7,26 +7,25 @@ import { httpBatchLink, TRPCClientError } from "@trpc/client";
 import { createRoot } from "react-dom/client";
 import superjson from "superjson";
 import App from "./App";
-import { startLogin } from "./const";
 import "./index.css";
 
 const queryClient = new QueryClient();
 
-const redirectToLoginIfUnauthorized = (error: unknown) => {
+/**
+ * An expired or missing session surfaces as UNAUTHED_ERR_MSG. There is no portal
+ * to bounce to now that sign-in is in-app, so the cached user is simply cleared
+ * and the UI falls back to its signed-out state.
+ */
+const clearSessionIfUnauthorized = (error: unknown) => {
   if (!(error instanceof TRPCClientError)) return;
-  if (typeof window === "undefined") return;
-
-  const isUnauthorized = error.message === UNAUTHED_ERR_MSG;
-
-  if (!isUnauthorized) return;
-
-  startLogin();
+  if (error.message !== UNAUTHED_ERR_MSG) return;
+  queryClient.setQueryData([["auth", "me"], { type: "query" }], null);
 };
 
 queryClient.getQueryCache().subscribe(event => {
   if (event.type === "updated" && event.action.type === "error") {
     const error = event.query.state.error;
-    redirectToLoginIfUnauthorized(error);
+    clearSessionIfUnauthorized(error);
     console.error("[API Query Error]", error);
   }
 });
@@ -34,7 +33,7 @@ queryClient.getQueryCache().subscribe(event => {
 queryClient.getMutationCache().subscribe(event => {
   if (event.type === "updated" && event.action.type === "error") {
     const error = event.mutation.state.error;
-    redirectToLoginIfUnauthorized(error);
+    clearSessionIfUnauthorized(error);
     console.error("[API Mutation Error]", error);
   }
 });
@@ -48,28 +47,6 @@ const trpcClient = trpc.createClient({
       : httpBatchLink({
           url: "/api/trpc",
           transformer: superjson,
-          headers() {
-            // Preview auto-login fallback: when the browser blocks iframe cookies
-            // (Safari ITP / private browsing / WebView), the runtime mirrors the
-            // session into sessionStorage so we can forward it as a Bearer token.
-            // The regular OAuth cookie flow keeps working and takes priority server-side.
-            try {
-              const raw = sessionStorage.getItem("manus-cookie");
-              if (raw) {
-                const prefix = `${COOKIE_NAME}=`;
-                const pair = raw
-                  .split(";")
-                  .find(s => s.trim().startsWith(prefix));
-                const token = pair?.trim().slice(prefix.length);
-                if (token) {
-                  return { Authorization: `Bearer ${token}` };
-                }
-              }
-            } catch {
-              // sessionStorage unavailable
-            }
-            return {};
-          },
           fetch(input, init) {
             return globalThis.fetch(input, {
               ...(init ?? {}),

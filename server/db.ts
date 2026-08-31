@@ -3,10 +3,10 @@ import { drizzle } from "drizzle-orm/mysql2";
 import {
   customerNotificationPreferences,
   customerPreferences,
-  InsertUser,
   orderTrackingEvents,
   savedProducts,
   users,
+  type User,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -25,75 +25,68 @@ export async function getDb() {
   return _db;
 }
 
-export async function upsertUser(user: InsertUser): Promise<void> {
-  if (!user.openId) {
-    throw new Error("User openId is required for upsert");
-  }
-
+/**
+ * Creates an account. Returns null when the address is already registered,
+ * rather than throwing, so the caller can answer without leaking which
+ * addresses exist.
+ *
+ * `email` is lowercased here — the single place it is written — so the unique
+ * index is case-insensitive regardless of the column's collation.
+ */
+export async function createUser(input: {
+  email: string;
+  passwordHash: string;
+  name?: string | null;
+}): Promise<User | null> {
   const db = await getDb();
-  if (!db) {
-    console.warn("[Database] Cannot upsert user: database not available");
-    return;
-  }
+  if (!db) throw new Error("Database is not configured");
+
+  const email = input.email.trim().toLowerCase();
+  if (await getUserByEmail(email)) return null;
+
+  // The owner, if configured, is an admin from the moment they register.
+  const role = ENV.ownerEmail && email === ENV.ownerEmail.trim().toLowerCase() ? "admin" : "user";
 
   try {
-    const values: InsertUser = {
-      openId: user.openId,
-    };
-    const updateSet: Record<string, unknown> = {};
-
-    const textFields = ["name", "email", "loginMethod"] as const;
-    type TextField = (typeof textFields)[number];
-
-    const assignNullable = (field: TextField) => {
-      const value = user[field];
-      if (value === undefined) return;
-      const normalized = value ?? null;
-      values[field] = normalized;
-      updateSet[field] = normalized;
-    };
-
-    textFields.forEach(assignNullable);
-
-    if (user.lastSignedIn !== undefined) {
-      values.lastSignedIn = user.lastSignedIn;
-      updateSet.lastSignedIn = user.lastSignedIn;
-    }
-    if (user.role !== undefined) {
-      values.role = user.role;
-      updateSet.role = user.role;
-    } else if (user.openId === ENV.ownerOpenId) {
-      values.role = 'admin';
-      updateSet.role = 'admin';
-    }
-
-    if (!values.lastSignedIn) {
-      values.lastSignedIn = new Date();
-    }
-
-    if (Object.keys(updateSet).length === 0) {
-      updateSet.lastSignedIn = new Date();
-    }
-
-    await db.insert(users).values(values).onDuplicateKeyUpdate({
-      set: updateSet,
+    await db.insert(users).values({
+      email,
+      passwordHash: input.passwordHash,
+      name: input.name ?? null,
+      role,
+      lastSignedIn: new Date(),
     });
   } catch (error) {
-    console.error("[Database] Failed to upsert user:", error);
+    // Two concurrent registrations for one address: the unique index rejects
+    // the loser, which is the correct outcome, not an error worth surfacing.
+    if (isDuplicateKeyError(error)) return null;
     throw error;
   }
+
+  return (await getUserByEmail(email)) ?? null;
 }
 
-export async function getUserByOpenId(openId: string) {
+function isDuplicateKeyError(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && (error as { code?: string }).code === "ER_DUP_ENTRY";
+}
+
+export async function getUserByEmail(email: string): Promise<User | undefined> {
   const db = await getDb();
-  if (!db) {
-    console.warn("[Database] Cannot get user: database not available");
-    return undefined;
-  }
+  if (!db) return undefined;
+  const rows = await db.select().from(users).where(eq(users.email, email.trim().toLowerCase())).limit(1);
+  return rows[0];
+}
 
-  const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
+export async function getUserById(id: number): Promise<User | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  const rows = await db.select().from(users).where(eq(users.id, id)).limit(1);
+  return rows[0];
+}
 
-  return result.length > 0 ? result[0] : undefined;
+export async function touchLastSignedIn(id: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(users).set({ lastSignedIn: new Date() }).where(eq(users.id, id));
 }
 
 export async function getCustomerProfile(userId: number) {

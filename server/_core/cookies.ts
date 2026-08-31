@@ -42,7 +42,11 @@ export function getSessionCookieOptions(
   return {
     httpOnly: true,
     path: "/",
-    sameSite: "none",
+    // "lax" is the right default for a first-party site: the cookie still rides
+    // top-level navigations back from an external checkout, but not arbitrary
+    // cross-site subrequests. The previous "none" existed to survive being
+    // framed by the Manus preview, which no longer applies.
+    sameSite: "lax",
     secure: isSecureRequest(req),
   };
 }

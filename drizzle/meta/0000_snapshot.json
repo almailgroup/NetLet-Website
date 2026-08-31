@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "d54b5a69-af43-4e7e-8493-947595e0371f",
+  "id": "094a9fd4-3b05-4361-9ff3-6ceed2c4dabf",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "customer_notification_preferences": {
@@ -373,9 +373,16 @@
           "notNull": true,
           "autoincrement": true
         },
-        "open_id": {
-          "name": "open_id",
-          "type": "varchar(191)",
+        "email": {
+          "name": "email",
+          "type": "varchar(320)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "password_hash": {
+          "name": "password_hash",
+          "type": "varchar(255)",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
@@ -383,20 +390,6 @@
         "name": {
           "name": "name",
           "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "email": {
-          "name": "email",
-          "type": "varchar(320)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "login_method": {
-          "name": "login_method",
-          "type": "varchar(64)",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
@@ -436,10 +429,10 @@
         }
       },
       "indexes": {
-        "users_open_id_unique": {
-          "name": "users_open_id_unique",
+        "users_email_unique": {
+          "name": "users_email_unique",
           "columns": [
-            "open_id"
+            "email"
           ],
           "isUnique": true
         }

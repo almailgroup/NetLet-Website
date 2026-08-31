@@ -43,16 +43,15 @@ CREATE TABLE `saved_products` (
 --> statement-breakpoint
 CREATE TABLE `users` (
 	`id` int AUTO_INCREMENT NOT NULL,
-	`open_id` varchar(191) NOT NULL,
+	`email` varchar(320) NOT NULL,
+	`password_hash` varchar(255) NOT NULL,
 	`name` varchar(255),
-	`email` varchar(320),
-	`login_method` varchar(64),
 	`role` enum('user','admin') NOT NULL DEFAULT 'user',
 	`last_signed_in` timestamp NOT NULL DEFAULT (now()),
 	`created_at` timestamp NOT NULL DEFAULT (now()),
 	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `users_id` PRIMARY KEY(`id`),
-	CONSTRAINT `users_open_id_unique` UNIQUE(`open_id`)
+	CONSTRAINT `users_email_unique` UNIQUE(`email`)
 );
 --> statement-breakpoint
 ALTER TABLE `customer_notification_preferences` ADD CONSTRAINT `customer_notification_preferences_user_id_users_id_fk` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint

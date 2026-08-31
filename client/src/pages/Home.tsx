@@ -17,6 +17,7 @@ import { useMemo, useState } from "react";
 import {
   ArrowDownRight,
   ArrowRight,
+  Apple,
   Bell,
   ChevronDown,
   ChevronLeft,
@@ -29,7 +30,9 @@ import {
   Menu,
   Minus,
   PackageCheck,
+  Play,
   Plus,
+  QrCode,
   Search,
   ShoppingBag,
   Share2,
@@ -42,7 +45,7 @@ import {
   X,
 } from "lucide-react";
 import { appPath } from "@/lib/basePath";
-import { collectionImages, footerLogoImage, heroImage, logoImage } from "@/lib/brandAssets";
+import { collectionImages, footerLogoImage, heroImage, logoImage, qrImage } from "@/lib/brandAssets";
 import { toast } from "sonner";
 
 const railSupportCards = [
@@ -75,6 +78,39 @@ function HeaderAction({ icon, caption, value, onClick, label, badge, tone = "qui
       <span className="block truncate text-xs font-extrabold">{value}</span>
     </span>
   </button>;
+}
+
+/**
+ * App-download header action with a QR panel on hover.
+ *
+ * Opens on focus as well as hover, so the panel is reachable from the keyboard
+ * rather than being mouse-only. `invisible` (not `opacity-0` alone) keeps it out
+ * of the accessibility tree while closed.
+ *
+ * The QR is a placeholder: a structurally convincing pattern that decodes to
+ * nothing, so it cannot resolve anywhere unintended before the real code is
+ * dropped in at client/public/brand/qr-placeholder.svg.
+ */
+function AppDownloadAction() {
+  const pending = (store: string) => toast(`${store} link coming soon`, { description: "The NetLet app has not been published yet." });
+  return <div className="group relative">
+    <HeaderAction label="Download the NetLet app" onClick={() => toast("Scan the QR code to download the NetLet app.")} icon={<QrCode className="size-[19px] text-[#f2683a]" />} caption="Download the" value="NetLet app" />
+    <div className="invisible absolute left-1/2 top-[calc(100%+.6rem)] z-50 w-[430px] -translate-x-1/2 opacity-0 transition-opacity duration-150 group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
+      <div className="glass rounded-3xl p-5 !bg-[rgba(255,253,249,.9)] shadow-[0_20px_50px_rgba(10,40,90,.18)]">
+        <div className="flex items-start gap-4">
+          <img src={qrImage} alt="Placeholder QR code for the NetLet app" className="size-[116px] shrink-0 rounded-2xl bg-white p-1.5" />
+          <div className="min-w-0">
+            <p className="type-heading text-base text-[#0a285a]">Download the NetLet app</p>
+            <p className="type-label mt-1 text-[#536b8c]">Scan the QR code to download</p>
+            <div className="mt-3 flex gap-2">
+              <button onClick={() => pending("App Store")} className="glass glass-navy pressable flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl px-2.5 py-2 text-[11px] font-extrabold"><Apple className="size-4" />App Store</button>
+              <button onClick={() => pending("Google Play")} className="glass glass-navy pressable flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl px-2.5 py-2 text-[11px] font-extrabold"><Play className="size-4" />Google Play</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>;
 }
 
 async function shareProduct(product: Product) {
@@ -225,9 +261,7 @@ export default function Home() {
         <div className="mx-auto lg:mx-0"><Logo /></div>
         <div className="hidden min-w-0 flex-1 lg:block"><LiveSearch catalog={catalog} value={search} onChange={setSearch} onSelectProduct={openProduct} /></div>
         <div className="hidden shrink-0 items-center gap-1.5 lg:flex">
-          <IconButton label="Notifications" onClick={() => toast("Notifications will appear here once your account is connected.")}><Bell className="size-[19px]" /></IconButton>
-          <IconButton label="Saved items" onClick={() => toast(`${saved.length} item${saved.length === 1 ? "" : "s"} saved for later.`)}><Heart className="size-[19px]" /></IconButton>
-          <HeaderAction label="Choose delivery area" onClick={() => setDeliveryOpen(true)} icon={<MapPin className="size-[19px] text-[#f2683a]" />} caption={labels.delivery} value={deliveryZone ? (isArabic ? deliveryZone.labelAr : deliveryZone.label) : "select area"} />
+          <AppDownloadAction />
           <HeaderAction label="Change language" onClick={toggleLocale} icon={<Globe2 className="size-[19px] text-[#f2683a]" />} caption={isArabic ? "AR /" : "EN /"} value="KWD" />
           <HeaderAction label={isAuthenticated ? "Sign out" : "Sign in"} onClick={accountAction} icon={isAuthenticated ? <LogOut className="size-[19px]" /> : <UserRound className="size-[19px]" />} caption="Welcome" value={isAuthenticated ? (user?.name ? `Hi, ${user.name}` : "Sign out") : "Sign in"} />
           <HeaderAction label="Open your bag" onClick={openCart} tone="primary" badge={itemCount} icon={<ShoppingBag className="size-[19px]" />} caption={labels.bag} value={itemCount === 1 ? "1 item" : `${itemCount} items`} />
@@ -236,7 +270,10 @@ export default function Home() {
       </div>
       <div className="container pb-3 lg:hidden"><LiveSearch catalog={catalog} value={search} onChange={setSearch} onSelectProduct={openProduct} /></div>
       {/* Secondary bar: departments only, so the row reads as one rail. */}
-      <nav className="container hidden h-12 items-center gap-2 lg:flex" aria-label="Primary navigation">{categoryRail.map((category, index) => <button key={category.query} onClick={() => selectCategory(category.query)} className={`pressable rounded-full px-3 py-2 text-xs font-semibold ${index === 0 ? "flex items-center gap-2 font-bold" : ""} ${activeCategory === category.query ? "glass glass-navy" : "glass !bg-white/35 !text-[#536b8c]"}`}>{index === 0 && <Menu className="size-4" />}{index === 0 ? "All departments" : category.label}</button>)}</nav>
+      <nav className="container hidden h-12 items-center gap-2 lg:flex" aria-label="Primary navigation">{categoryRail.map((category, index) => <button key={category.query} onClick={() => selectCategory(category.query)} className={`pressable rounded-full px-3 py-2 text-xs font-semibold ${index === 0 ? "flex items-center gap-2 font-bold" : ""} ${activeCategory === category.query ? "glass glass-navy" : "glass !bg-white/35 !text-[#536b8c]"}`}>{index === 0 && <Menu className="size-4" />}{index === 0 ? "All departments" : category.label}</button>)}<div className="ml-auto flex shrink-0 items-center gap-1.5">
+        <IconButton label="Notifications" onClick={() => toast("Notifications will appear here once your account is connected.")}><Bell className="size-[19px]" /></IconButton>
+        <IconButton label="Saved items" onClick={() => toast(`${saved.length} item${saved.length === 1 ? "" : "s"} saved for later.`)}><Heart className="size-[19px]" /></IconButton>
+      </div></nav>
     </header>
 
     {menuOpen && <div className="netlet-menu-scrim fixed inset-0 z-50 bg-[#061b3b]/30 backdrop-blur-sm lg:hidden" onClick={() => setMenuOpen(false)}><aside className="netlet-menu-panel h-full w-[82%] max-w-sm bg-[#f3f2ed] px-5 py-7 shadow-2xl" onClick={(event) => event.stopPropagation()}><div className="flex items-center justify-between"><Logo /><IconButton label="Close menu" onClick={() => setMenuOpen(false)}><X /></IconButton></div><div className="mt-10 space-y-1">{categoryRail.map((category) => <button key={category.query} onClick={() => { selectCategory(category.query); setMenuOpen(false); }} className="glass pressable mb-1 block w-full rounded-xl px-4 py-4 text-left text-sm font-bold">{category.label}</button>)}</div><button onClick={accountAction} className="glass glass-navy pressable mt-7 flex w-full items-center justify-center gap-2 rounded-2xl p-4 text-sm font-bold">{isAuthenticated ? <LogOut className="size-4" /> : <UserRound className="size-4" />}{isAuthenticated ? `Sign out${user?.name ? `, ${user.name}` : ""}` : "Sign in to NetLet"}</button></aside></div>}

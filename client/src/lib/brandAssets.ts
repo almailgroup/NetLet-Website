@@ -30,6 +30,14 @@ export const footerLogoImage = DEMO_MODE
   : STORAGE_FOOTER_LOGO;
 export const heroImage = DEMO_MODE ? DEMO_HERO : STORAGE_HERO;
 
+/**
+ * QR panel artwork for the app-download header action. Structurally a QR code
+ * but encodes nothing, so it cannot resolve anywhere unintended; replace the
+ * file with the real code when there is one. Committed rather than proxied,
+ * since it has no /manus-storage counterpart.
+ */
+export const qrImage = appPath("/brand/qr-placeholder.svg");
+
 /** Artwork for the home-page rail support cards, in tech / home / style order. */
 export const collectionImages = DEMO_MODE
   ? [

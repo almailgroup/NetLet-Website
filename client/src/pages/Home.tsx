@@ -95,7 +95,7 @@ function AppDownloadAction() {
   const pending = (store: string) => toast(`${store} link coming soon`, { description: "The NetLet app has not been published yet." });
   return <div className="group relative">
     <HeaderAction label="Download the NetLet app" onClick={() => toast("Scan the QR code to download the NetLet app.")} icon={<QrCode className="size-[19px] text-[#f2683a]" />} caption="Download the" value="NetLet app" />
-    <div className="invisible absolute left-1/2 top-[calc(100%+.6rem)] z-50 w-[430px] -translate-x-1/2 opacity-0 transition-opacity duration-150 group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
+    <div className="invisible absolute left-1/2 top-full z-50 w-[430px] -translate-x-1/2 pt-2.5 opacity-0 transition-opacity duration-150 group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
       <div className="glass rounded-3xl p-5 !bg-[rgba(255,253,249,.9)] shadow-[0_20px_50px_rgba(10,40,90,.18)]">
         <div className="flex items-start gap-4">
           <img src={qrImage} alt="Placeholder QR code for the NetLet app" className="size-[116px] shrink-0 rounded-2xl bg-white p-1.5" />

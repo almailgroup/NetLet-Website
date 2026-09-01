@@ -307,15 +307,20 @@
       backdrop-filter: url("#netlet-liquid-glass") blur(2px) saturate(190%)
         brightness(1.07);
     }
-    .glass-accent,
     .glass-on-dark {
       backdrop-filter: url("#netlet-liquid-glass") blur(4px) saturate(170%);
     }
   }
 
-  /* Navy tint. Thin enough to refract, held at 0.73: measured against the pearl
-     page background this reads 5.3:1, leaving margin for lighter backdrops.
-     White label text drops under WCAG AA past roughly 0.62. */
+  /* The three filled tints below share one construction, which is what makes
+     the controls read as a set: a solid fill, a single hairline along the top
+     edge, a soft inner shade at the bottom, and a restrained rim. No diagonal
+     wash and no hover sweep — over a filled surface both read as glare rather
+     than as glass. The clear tint above keeps them, because on a near
+     transparent surface they are what makes the glass legible at all. */
+
+  /* Navy tint, at full brand strength. White on #0a285a measures about 12.6:1,
+     so the primary controls are comfortably past WCAG AA. */
   .glass-navy {
     color: #fffdf9;
     /* Opaque brand navy. The tint was translucent so the backdrop could show
@@ -352,27 +357,25 @@
      orange than the brand's — a call for the brand, not for this effect. */
   .glass-accent {
     color: #fff;
-    background-color: rgba(242, 104, 58, 0.96);
-    background-image: linear-gradient(
-      152deg,
-      rgba(255, 255, 255, 0.1),
-      rgba(255, 255, 255, 0) 36%
-    );
+    /* Solid brand orange. Thinning it also cost contrast, which this pairing
+       has none to spare of — see the note above the tint definitions. */
+    background-color: #f2683a;
+    background-image: none;
     box-shadow:
-      inset 0 1px 1px rgba(255, 255, 255, 0.6),
-      inset 0 0 14px rgba(255, 255, 255, 0.16),
-      inset 0 -2px 6px rgba(120, 40, 15, 0.3),
-      0 1px 3px rgba(214, 85, 44, 0.16);
+      inset 0 1px 0 rgba(255, 255, 255, 0.3),
+      inset 0 -2px 6px rgba(120, 40, 15, 0.26),
+      0 1px 3px rgba(214, 85, 44, 0.18);
   }
   .glass-accent::after {
     background: linear-gradient(
       140deg,
-      rgba(255, 255, 255, 0.9),
-      rgba(255, 226, 205, 0.4) 22%,
-      rgba(255, 255, 255, 0.1) 46%,
-      rgba(255, 214, 190, 0.4) 74%,
-      rgba(255, 255, 255, 0.7)
+      rgba(255, 255, 255, 0.34),
+      rgba(255, 255, 255, 0.08) 45%,
+      rgba(255, 255, 255, 0.26)
     );
+  }
+  .glass-accent::before {
+    display: none;
   }
   .glass-accent:hover {
     background-color: rgba(223, 91, 48, 0.97);
@@ -381,18 +384,15 @@
   /* On the navy footer and dark rails the glass has to lighten, not tint. */
   .glass-on-dark {
     color: #fffdf9;
-    background-color: rgba(255, 255, 255, 0.1);
-    background-image: linear-gradient(
-      152deg,
-      rgba(255, 255, 255, 0.28),
-      rgba(255, 255, 255, 0.02) 46%,
-      rgba(255, 255, 255, 0.1)
-    );
+    background-color: rgba(255, 255, 255, 0.14);
+    background-image: none;
     box-shadow:
-      inset 0 1px 1px rgba(255, 255, 255, 0.5),
-      inset 0 0 16px rgba(255, 255, 255, 0.14),
-      inset 0 -2px 6px rgba(0, 0, 0, 0.3),
-      0 1px 3px rgba(0, 0, 0, 0.16);
+      inset 0 1px 0 rgba(255, 255, 255, 0.28),
+      inset 0 -2px 6px rgba(0, 0, 0, 0.26),
+      0 1px 3px rgba(0, 0, 0, 0.18);
+  }
+  .glass-on-dark::before {
+    display: none;
   }
   .glass-on-dark::after {
     background: linear-gradient(

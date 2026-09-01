@@ -307,7 +307,6 @@
       backdrop-filter: url("#netlet-liquid-glass") blur(2px) saturate(190%)
         brightness(1.07);
     }
-    .glass-navy,
     .glass-accent,
     .glass-on-dark {
       backdrop-filter: url("#netlet-liquid-glass") blur(4px) saturate(170%);
@@ -319,36 +318,29 @@
      White label text drops under WCAG AA past roughly 0.62. */
   .glass-navy {
     color: #fffdf9;
-    background-color: rgba(10, 40, 90, 0.73);
-    background-image: linear-gradient(
-      152deg,
-      rgba(255, 255, 255, 0.3),
-      rgba(255, 255, 255, 0.02) 44%,
-      rgba(255, 255, 255, 0.12)
-    );
+    /* Opaque brand navy. The tint was translucent so the backdrop could show
+       through, but over a pale page that reads as a haze across the fill rather
+       than as glass, and it dulled the brand colour. */
+    background-color: #0a285a;
+    background-image: none;
     box-shadow:
-      inset 0 1px 1px rgba(255, 255, 255, 0.55),
-      inset 0 0 16px rgba(255, 255, 255, 0.16),
-      inset 0 -2px 6px rgba(0, 0, 0, 0.26),
-      0 1px 3px rgba(10, 40, 90, 0.12);
+      /* A single hairline along the top edge is enough to seat the button
+         without the diagonal wash that read as glare. */
+      inset 0 1px 0 rgba(255, 255, 255, 0.22),
+      inset 0 -2px 6px rgba(0, 0, 0, 0.24),
+      0 1px 3px rgba(10, 40, 90, 0.16);
   }
   .glass-navy::after {
     background: linear-gradient(
       140deg,
-      rgba(255, 255, 255, 0.8),
-      rgba(255, 214, 190, 0.34) 22%,
-      rgba(255, 255, 255, 0.06) 46%,
-      rgba(190, 218, 255, 0.34) 74%,
-      rgba(255, 255, 255, 0.62)
+      rgba(255, 255, 255, 0.26),
+      rgba(255, 255, 255, 0.06) 45%,
+      rgba(255, 255, 255, 0.2)
     );
   }
+  /* No sheen on the navy tint: the sweep is the same glare, animated. */
   .glass-navy::before {
-    background: linear-gradient(
-      105deg,
-      transparent 28%,
-      rgba(255, 255, 255, 0.3) 47%,
-      transparent 66%
-    );
+    display: none;
   }
   .glass-navy:hover {
     background-color: rgba(242, 104, 58, 0.82);

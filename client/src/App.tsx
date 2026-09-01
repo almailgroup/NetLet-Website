@@ -12,7 +12,6 @@ import NotFound from "@/pages/NotFound";
 import ProductDetail from "@/pages/ProductDetail";
 import { BASE_PATH } from "@/lib/basePath";
 import { Route, Router as WouterRouter, Switch } from "wouter";
-import DemoNotice from "./components/DemoNotice";
 import LiquidGlassFilters from "./components/LiquidGlassFilters";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -44,7 +43,6 @@ function App() {
             <CartProvider>
               <Toaster richColors position="bottom-right" />
               <LiquidGlassFilters />
-              <DemoNotice />
               <Router />
             </CartProvider>
           </CustomerProvider>

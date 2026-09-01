@@ -17,7 +17,7 @@ export const homeRailDefinitions = [
 export const editorialUpdates = [
   { date: "Delivery notes", title: "A calmer way to get the everyday essentials.", summary: "NetLet is designed around useful finds, clear product detail, and a Kuwait-focused checkout journey." },
   { date: "NetLet edit", title: "Small upgrades can change the rhythm of a room.", summary: "Browse our considered selection of home and personal technology pieces, all in one clean place." },
-  { date: "Shopping guide", title: "From first search to bag, keep it simple.", summary: "Live search suggestions and a persistent bag make it easy to find and revisit the things you want." },
+  { date: "Shopping guide", title: "From first search to cart, keep it simple.", summary: "Live search suggestions and a persistent cart make it easy to find and revisit the things you want." },
 ] as const;
 
 export const footerGroups = [

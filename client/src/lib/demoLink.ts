@@ -83,7 +83,7 @@ function writeCart(cart: Cart): Cart {
 function requireCart(cartId: string): Cart {
   const stored = readCart();
   if (!stored || stored.id !== cartId) {
-    throw new TRPCClientError("This demo bag is no longer available.");
+    throw new TRPCClientError("This demo cart is no longer available.");
   }
   return stored;
 }

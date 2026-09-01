@@ -81,7 +81,7 @@ export default function AuthDialog({ open, onClose }: { open: boolean; onClose: 
               {isRegister ? "Create your account" : "Welcome back"}
             </h2>
             <p className="type-label mt-1 text-[#536b8c]">
-              {isRegister ? "Save finds and sync your bag across devices." : "Sign in to pick up where you left off."}
+              {isRegister ? "Save finds and sync your cart across devices." : "Sign in to pick up where you left off."}
             </p>
           </div>
           <button onClick={onClose} aria-label="Close" className="glass pressable grid size-9 shrink-0 place-items-center rounded-full">

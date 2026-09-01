@@ -169,7 +169,7 @@ export default function ProductDetail() {
     if (!product || !selectedVariant?.availableForSale) return;
     try {
       await addItem(selectedVariant.id);
-      toast.success(`${product.title} added to your bag`);
+      toast.success(`${product.title} added to your cart`);
     } catch {
       toast.error("We couldn't add that item just now. Please try again.");
     }
@@ -193,7 +193,7 @@ export default function ProductDetail() {
             <p className="mt-5 text-sm leading-7 text-[#536b8c]">{product.description || "A considered NetLet find for everyday Kuwait life."}</p>
             <div className="mt-7 border-y border-[#d5dfeb] py-5"><p className="text-2xl font-extrabold tracking-[-.05em] text-[#0a285a]">{formatMoney(selectedVariant?.price ?? product.priceRange.min)}</p>{selectedVariant?.compareAtPrice ? <p className="mt-1 text-xs font-bold text-[#778ba6] line-through">{formatMoney(selectedVariant.compareAtPrice)}</p> : null}</div>
             {product.variants.length > 1 ? <label className="mt-6 block text-xs font-extrabold text-[#0a285a]">Choose an option<select value={selectedVariantId} onChange={event => setSelectedVariantId(event.target.value)} className="mt-2 block w-full rounded-xl border border-[#d5dfeb] bg-white px-3 py-3 text-sm font-semibold text-[#0a285a] outline-none focus:border-[#f2683a]">{product.variants.map(variant => <option key={variant.id} value={variant.id} disabled={!variant.availableForSale}>{variant.title} — {formatMoney(variant.price)}{variant.availableForSale ? "" : " (Unavailable)"}</option>)}</select></label> : null}
-            <button onClick={() => void addToBag()} disabled={!selectedVariant?.availableForSale || cartLoading} className="glass glass-navy pressable mt-7 flex w-full items-center justify-center gap-2 rounded-full px-5 py-4 text-sm font-extrabold disabled:cursor-not-allowed disabled:opacity-50">{cartLoading ? <LoaderCircle className="size-4 animate-spin" /> : <ShoppingBag className="size-4" />}{selectedVariant?.availableForSale ? "Add to bag" : "Unavailable"}</button>
+            <button onClick={() => void addToBag()} disabled={!selectedVariant?.availableForSale || cartLoading} className="glass glass-navy pressable mt-7 flex w-full items-center justify-center gap-2 rounded-full px-5 py-4 text-sm font-extrabold disabled:cursor-not-allowed disabled:opacity-50">{cartLoading ? <LoaderCircle className="size-4 animate-spin" /> : <ShoppingBag className="size-4" />}{selectedVariant?.availableForSale ? "Add to cart" : "Unavailable"}</button>
             <p className="mt-4 text-center text-[11px] leading-5 text-[#778ba6]">Delivery pricing and estimated times will appear when NetLet’s Kuwait delivery policy is configured.</p>
           </div>
         </section>

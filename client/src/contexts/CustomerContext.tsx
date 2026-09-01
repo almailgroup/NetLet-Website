@@ -29,8 +29,8 @@ function writeValue(key: string, value: string | string[] | null) {
 }
 
 const copy = {
-  en: { home: "Home", browse: "Browse", saved: "Saved", account: "Account", bag: "Bag", language: "العربية", delivery: "Deliver to", deliverySetup: "Delivery details pending configuration" },
-  ar: { home: "الرئيسية", browse: "تصفح", saved: "المحفوظات", account: "الحساب", bag: "الحقيبة", language: "English", delivery: "التوصيل إلى", deliverySetup: "تفاصيل التوصيل بانتظار الإعداد" },
+  en: { home: "Home", browse: "Browse", saved: "Saved", account: "Account", bag: "Cart", language: "العربية", delivery: "Deliver to", deliverySetup: "Delivery details pending configuration" },
+  ar: { home: "الرئيسية", browse: "تصفح", saved: "المحفوظات", account: "الحساب", bag: "عربة التسوق", language: "English", delivery: "التوصيل إلى", deliverySetup: "تفاصيل التوصيل بانتظار الإعداد" },
 } as const;
 
 type CustomerContextValue = {

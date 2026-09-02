@@ -68,6 +68,12 @@
     scroll-behavior: smooth;
   }
   body {
+    /* Clipped here rather than on <main>. `overflow-x: hidden` on an ancestor
+       makes that element the scroll container for anything sticky inside it,
+       which is why the header stuck to <main>'s box and scrolled away with the
+       page. `clip` contains the decorative overflow without creating a scroll
+       container, so position: sticky still resolves against the viewport. */
+    overflow-x: clip;
     @apply bg-background text-foreground font-sans;
     font-family: "Inter", sans-serif;
     font-weight: 400;

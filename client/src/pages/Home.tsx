@@ -257,7 +257,7 @@ export default function Home() {
   const firstProduct = visibleProducts[0] ?? catalog[0];
   const openProduct = (product: Product) => window.location.assign(appPath(`/products/${encodeURIComponent(product.handle)}`));
 
-  return <main id="top" className="min-h-screen overflow-x-hidden bg-[#f3f2ed] text-[#0a285a]">
+  return <main id="top" className="min-h-screen bg-[#f3f2ed] text-[#0a285a]">
     <AuthDialog open={authOpen} onClose={() => setAuthOpen(false)} />
     <header className="sticky top-0 z-40 border-b border-[#d5dfeb] bg-[#f3f2ed]/95 backdrop-blur-xl">
       {/* Primary bar: logo, a search field that takes all remaining width, then

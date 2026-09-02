@@ -64,7 +64,21 @@ API. It needs:
 
 `.env` is gitignored. Keep it that way; the token is a credential.
 
-## 2. Check the connection before building anything
+## 2. Check the setup before building anything
+
+Two checks, in order. The first reads configuration only and is instant:
+
+```sh
+pnpm preflight
+```
+
+It reports Node, pnpm, `.env`, both Shopify values, the database, the build and
+the port — and exits non-zero listing what is still blocking. It catches the
+two mistakes that otherwise surface as a bare `401`: an Admin API token
+(`shpat_...`) pasted where the Storefront one belongs, and a full admin URL
+pasted where the bare `netlet.myshopify.com` host belongs.
+
+The second actually calls Shopify:
 
 ```sh
 pnpm shopify:probe

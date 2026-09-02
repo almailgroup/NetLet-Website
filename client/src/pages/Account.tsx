@@ -32,9 +32,9 @@ export default function Account() {
   const storedPreferences = new Map((notifications.data ?? []).map(item => [item.kind as NotificationKind, item.enabled]));
 
   return (
-    <main className="min-h-screen bg-[#f3f2ed] pb-8 text-[#0a285a]">
+    <main className="min-h-screen bg-background pb-8 text-[#0a285a]">
       <AuthDialog open={authOpen} onClose={() => setAuthOpen(false)} />
-      <header className="border-b border-[#d5dfeb] bg-[#f3f2ed]/95 backdrop-blur-xl"><div className="container flex h-[76px] items-center justify-between gap-4"><a href={appPath("/")} className="flex items-center" aria-label="Back to NetLet home"><img src={logoImage} alt="NetLet" className="h-11 w-auto max-w-[140px] object-contain" /></a><a href={appPath("/")} className="glass type-control pressable flex items-center gap-1.5 rounded-full px-4 py-2">Continue shopping <ChevronRight className="size-4" /></a></div></header>
+      <header className="border-b border-[#d5dfeb] bg-background/95 backdrop-blur-xl"><div className="container flex h-[76px] items-center justify-between gap-4"><a href={appPath("/")} className="flex items-center" aria-label="Back to NetLet home"><img src={logoImage} alt="NetLet" className="h-11 w-auto max-w-[140px] object-contain" /></a><a href={appPath("/")} className="glass type-control pressable flex items-center gap-1.5 rounded-full px-4 py-2">Continue shopping <ChevronRight className="size-4" /></a></div></header>
 
       <section className="container max-w-5xl py-10 sm:py-14"><p className="type-label text-[#f2683a]">NETLET ACCOUNT</p>{loading ? <div className="mt-4 h-12 w-64 animate-pulse rounded-xl bg-[#dce5e9]" /> : <h1 className="type-display mt-3 text-4xl text-[#0a285a] sm:text-5xl">{isAuthenticated ? `Welcome back${user?.name ? `, ${user.name}` : ""}.` : "Your account, your way."}</h1>}<p className="type-body mt-4 max-w-xl text-[#536b8c]">Keep delivery, saved finds, and future order updates in one considered place.</p>
 

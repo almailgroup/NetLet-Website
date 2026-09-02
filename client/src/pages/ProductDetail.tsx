@@ -108,8 +108,15 @@ function RelatedCard({ product }: { product: Product }) {
   );
 }
 
-/** How many thumbnails the rail shows before collapsing into "View all". */
+/**
+ * How many thumbnails the rail shows before collapsing into "View all".
+ *
+ * Fewer on a phone: the rail is horizontal there, and six 62px tiles overflow a
+ * 358px strip, which pushed the View-all tile off the right edge where nobody
+ * would find it. Five tiles fit.
+ */
 const RAIL_LIMIT = 5;
+const RAIL_LIMIT_NARROW = 4;
 /** Magnification applied by the hover lens, as a multiple of natural size. */
 const LENS_ZOOM = 2.5;
 
@@ -128,9 +135,20 @@ function ImageLightbox({ product, selectedImageIndex, onClose, onSelectImage, on
   const [scale, setScale] = useState(1);
   const image = product.images[selectedImageIndex] ?? product.images[0];
   const hasMultipleImages = product.images.length > 1;
+  const swipeStart = useRef<{ x: number; y: number } | null>(null);
 
   // A new image at 3x would drop the shopper into a corner of it.
   useEffect(() => setScale(1), [selectedImageIndex]);
+
+  const endSwipe = (event: React.PointerEvent<HTMLDivElement>) => {
+    const start = swipeStart.current;
+    swipeStart.current = null;
+    // Only while un-zoomed: past 1x a drag is how you pan around the image.
+    if (!start || !hasMultipleImages || scale > 1) return;
+    const travelled = event.clientX - start.x;
+    if (Math.abs(travelled) < SWIPE_THRESHOLD || Math.abs(travelled) < Math.abs(event.clientY - start.y)) return;
+    onChangeImage(travelled < 0 ? "next" : "previous");
+  };
 
   return (
     <div className="fixed inset-0 z-[90] flex flex-col bg-white" role="dialog" aria-modal="true" aria-label={`All images for ${product.title}`}>
@@ -141,8 +159,11 @@ function ImageLightbox({ product, selectedImageIndex, onClose, onSelectImage, on
         <button autoFocus onClick={onClose} aria-label="Close image viewer" className="pressable grid size-10 place-items-center rounded-full text-[#404553] hover:bg-[#f1f1f3]"><X className="size-6" /></button>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-6 pb-6 pt-4 lg:flex-row lg:overflow-hidden">
-        <div className="grid h-fit shrink-0 grid-cols-3 gap-3 lg:w-[400px]">
+      {/* On a phone the grid used to sit above the image, so opening the viewer
+          showed nine thumbnails and the photo 460px down the scroll. The image
+          comes first there; the desktop keeps the grid on the left. */}
+      <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 pb-6 pt-4 sm:px-6 lg:flex-row lg:gap-6 lg:overflow-hidden">
+        <div className="order-2 grid h-fit shrink-0 grid-cols-4 gap-2.5 sm:grid-cols-5 lg:order-1 lg:w-[400px] lg:grid-cols-3 lg:gap-3">
           {product.images.map((item, index) => (
             <button
               key={`${item.url}-${index}`}
@@ -156,7 +177,12 @@ function ImageLightbox({ product, selectedImageIndex, onClose, onSelectImage, on
           ))}
         </div>
 
-        <div className="relative flex min-h-[320px] flex-1 items-center justify-center overflow-auto">
+        <div
+          onPointerDown={(event) => { swipeStart.current = { x: event.clientX, y: event.clientY }; }}
+          onPointerUp={endSwipe}
+          onPointerCancel={() => { swipeStart.current = null; }}
+          className="relative order-1 flex min-h-[46vh] flex-1 touch-pan-y items-center justify-center overflow-auto lg:order-2 lg:min-h-[320px]"
+        >
           {image ? <img src={image.url} alt={image.altText ?? product.title} style={{ transform: `scale(${scale})` }} className="max-h-full max-w-full object-contain transition-transform duration-200" /> : null}
           <div className="absolute right-2 top-2 flex flex-col gap-2">
             <button onClick={() => setScale(s => Math.min(3, +(s + 0.5).toFixed(1)))} disabled={scale >= 3} aria-label="Zoom in" className="pressable grid size-10 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.16)] disabled:opacity-35"><ZoomIn className="size-5" /></button>
@@ -165,6 +191,7 @@ function ImageLightbox({ product, selectedImageIndex, onClose, onSelectImage, on
           {hasMultipleImages ? <>
             <button onClick={() => onChangeImage("previous")} aria-label="Show previous product image" className="pressable absolute left-2 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.16)]"><ChevronLeft className="size-6" /></button>
             <button onClick={() => onChangeImage("next")} aria-label="Show next product image" className="pressable absolute right-2 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.16)]"><ChevronRight className="size-6" /></button>
+            <span className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-[#0a285a]/85 px-3 py-1 text-[11px] font-bold text-white" aria-live="polite">{selectedImageIndex + 1} / {product.images.length}</span>
           </> : null}
         </div>
       </div>
@@ -182,6 +209,22 @@ function ImageLightbox({ product, selectedImageIndex, onClose, onSelectImage, on
  * because a touch device cannot hover — a panel that appears on tap and then
  * cannot be dismissed is worse than no panel — and a small laptop can.
  */
+/** Horizontal travel, in px, that counts as a swipe rather than a tap. */
+const SWIPE_THRESHOLD = 45;
+
+/**
+ * Gallery.
+ *
+ * Desktop keeps the rail down the left with the view large beside it. Below
+ * `sm` that arrangement does not survive: a 72px rail out of a 390px screen
+ * left the product 274px wide, so the rail moves under the image and the stage
+ * takes the full width. Order is swapped with CSS rather than by rendering
+ * twice, so there is one rail with one selected state.
+ *
+ * Touch gets what touch expects — a swipe, both arrows, and a counter, since
+ * a vertical rail scrolled out of view is the only other clue that image four
+ * of nine is showing. The hover magnifier stays mouse-only.
+ */
 function ProductGallery({ product, selectedImageIndex, onSelectImage, onChangeImage, onZoom, onShare, onToggleSaved, isSaved }: {
   product: Product;
   selectedImageIndex: number;
@@ -194,50 +237,85 @@ function ProductGallery({ product, selectedImageIndex, onSelectImage, onChangeIm
 }) {
   const image = product.images[selectedImageIndex] ?? product.images[0];
   const hasMultipleImages = product.images.length > 1;
-  const stageRef = useRef<HTMLDivElement>(null);
   const [lens, setLens] = useState<{ x: number; y: number } | null>(null);
   const [canHover, setCanHover] = useState(false);
+  const [narrowRail, setNarrowRail] = useState(false);
+  const swipeStart = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
-    const query = window.matchMedia("(hover: hover) and (pointer: fine)");
-    const apply = () => setCanHover(query.matches);
-    apply();
-    query.addEventListener("change", apply);
-    return () => query.removeEventListener("change", apply);
+    const queries: [MediaQueryList, (matches: boolean) => void][] = [
+      [window.matchMedia("(hover: hover) and (pointer: fine)"), setCanHover],
+      // Matches Tailwind's `sm`, the same point the rail turns horizontal.
+      [window.matchMedia("(max-width: 639px)"), setNarrowRail],
+    ];
+    const listeners = queries.map(([query, set]) => {
+      const apply = () => set(query.matches);
+      apply();
+      query.addEventListener("change", apply);
+      return () => query.removeEventListener("change", apply);
+    });
+    return () => listeners.forEach(off => off());
   }, []);
 
-  const overflow = product.images.length - RAIL_LIMIT;
-  const railImages = overflow > 0 ? product.images.slice(0, RAIL_LIMIT) : product.images;
+  // Keep the selected thumbnail in view as the image changes, however it
+  // changed — the rail scrolls in both axes depending on the breakpoint.
+  const railRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const selected = railRef.current?.querySelector('[aria-selected="true"]');
+    selected?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [selectedImageIndex]);
+
+  // One limit drives both the slice and the count, or the tile advertises a
+  // number that does not match the thumbnails beside it.
+  const railLimit = narrowRail ? RAIL_LIMIT_NARROW : RAIL_LIMIT;
+  const overflow = product.images.length - railLimit;
+  const railImages = overflow > 0 ? product.images.slice(0, railLimit) : product.images;
 
   const trackLens = (event: React.PointerEvent<HTMLDivElement>) => {
     if (!canHover || !image) return;
     const box = event.currentTarget.getBoundingClientRect();
-    // Clamped so the lens cannot sit half outside the artwork at the edges.
     const x = Math.min(1, Math.max(0, (event.clientX - box.left) / box.width));
     const y = Math.min(1, Math.max(0, (event.clientY - box.top) / box.height));
     setLens({ x, y });
   };
 
+  const endSwipe = (event: React.PointerEvent<HTMLDivElement>) => {
+    const start = swipeStart.current;
+    swipeStart.current = null;
+    if (!start || !hasMultipleImages) return;
+    const travelled = event.clientX - start.x;
+    // Ignore a mostly-vertical drag: that is the page being scrolled.
+    if (Math.abs(travelled) < SWIPE_THRESHOLD || Math.abs(travelled) < Math.abs(event.clientY - start.y)) return;
+    onChangeImage(travelled < 0 ? "next" : "previous");
+  };
+
+  const arrow = "pressable absolute top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_12px_rgba(10,40,90,.18)] sm:size-11";
+
   return (
-    <div className="lg:sticky lg:top-[150px] lg:z-20 lg:self-start">
-      <div className="flex gap-3">
+    <div className="min-w-0 lg:sticky lg:top-[150px] lg:z-20 lg:self-start">
+      <div className="flex min-w-0 flex-col gap-3 sm:flex-row">
         {hasMultipleImages ? (
-          <div className="hide-scrollbar flex max-h-[300px] w-[72px] shrink-0 flex-col gap-2.5 overflow-y-auto sm:max-h-[460px]" role="tablist" aria-label="Product images">
+          <div
+            ref={railRef}
+            className="hide-scrollbar order-2 flex w-full min-w-0 shrink-0 gap-2.5 overflow-auto sm:order-1 sm:max-h-[460px] sm:w-[72px] sm:flex-col"
+            role="tablist"
+            aria-label="Product images"
+          >
             {railImages.map((item, index) => (
               <button
                 key={`${item.url}-${index}`}
                 role="tab"
                 onClick={() => onSelectImage(index)}
-                onMouseEnter={() => onSelectImage(index)}
+                onMouseEnter={() => { if (canHover) onSelectImage(index); }}
                 aria-label={`Show image ${index + 1} of ${product.images.length}`}
                 aria-selected={selectedImageIndex === index}
-                className={`pressable grid size-[68px] shrink-0 place-items-center overflow-hidden rounded-xl border-2 bg-white p-1 transition-colors ${selectedImageIndex === index ? "border-[#0a285a]" : "border-[#e2e5eb] hover:border-[#aac0da]"}`}
+                className={`pressable grid size-[62px] shrink-0 place-items-center overflow-hidden rounded-xl border-2 bg-white p-1 transition-colors sm:size-[68px] ${selectedImageIndex === index ? "border-[#0a285a]" : "border-[#e2e5eb] hover:border-[#aac0da]"}`}
               >
                 <img src={item.url} alt="" aria-hidden className="size-full object-contain" />
               </button>
             ))}
             {overflow > 0 ? (
-              <button onClick={onZoom} aria-label={`View all ${product.images.length} images`} className="pressable grid size-[68px] shrink-0 place-items-center rounded-xl border-2 border-[#e2e5eb] bg-[#0a285a] text-white hover:border-[#aac0da]">
+              <button onClick={onZoom} aria-label={`View all ${product.images.length} images`} className="pressable grid size-[62px] shrink-0 place-items-center rounded-xl border-2 border-[#e2e5eb] bg-[#0a285a] text-white hover:border-[#aac0da] sm:size-[68px]">
                 <span className="text-base font-extrabold leading-none">+{overflow}</span>
                 <span className="text-[9px] font-bold leading-none">View all</span>
               </button>
@@ -245,24 +323,29 @@ function ProductGallery({ product, selectedImageIndex, onSelectImage, onChangeIm
           </div>
         ) : null}
 
-        <div className="relative min-w-0 flex-1">
+        <div className="relative order-1 min-w-0 flex-1 sm:order-2">
           <div
-            ref={stageRef}
             onPointerMove={trackLens}
-            onPointerLeave={() => setLens(null)}
-            className="relative flex h-[300px] items-center justify-center overflow-hidden rounded-[1.25rem] border border-[#e2e5eb] bg-white p-6 sm:h-[460px]"
+            onPointerLeave={() => { setLens(null); swipeStart.current = null; }}
+            onPointerDown={(event) => { swipeStart.current = { x: event.clientX, y: event.clientY }; }}
+            onPointerUp={endSwipe}
+            onPointerCancel={() => { swipeStart.current = null; }}
+            className="relative flex h-[340px] touch-pan-y items-center justify-center overflow-hidden rounded-[1.25rem] border border-[#e2e5eb] bg-white p-5 sm:h-[460px] sm:p-6"
           >
             {image
-              ? <img src={image.url} alt={image.altText ?? product.title} className="max-h-full max-w-full object-contain" />
+              ? <img src={image.url} alt={image.altText ?? product.title} draggable={false} className="max-h-full max-w-full object-contain" />
               : <PackageOpen className="size-24 text-[#e2e5f1]" />}
             {lens && image ? (
-              // The region the panel is showing, drawn over the source so the
-              // magnified view is anchored to something the eye can follow.
               <span
                 aria-hidden
                 className="pointer-events-none absolute size-[130px] rounded-lg border-2 border-[#0a285a]/35 bg-[#0a285a]/8"
                 style={{ left: `calc(${lens.x * 100}% - 65px)`, top: `calc(${lens.y * 100}% - 65px)` }}
               />
+            ) : null}
+            {hasMultipleImages ? (
+              <span className="pointer-events-none absolute bottom-3 left-3 rounded-full bg-[#0a285a]/85 px-2.5 py-1 text-[11px] font-bold text-white" aria-live="polite">
+                {selectedImageIndex + 1} / {product.images.length}
+              </span>
             ) : null}
           </div>
 
@@ -272,12 +355,13 @@ function ProductGallery({ product, selectedImageIndex, onSelectImage, onChangeIm
             <button onClick={onZoom} aria-label="Open the full image viewer" className="pressable grid size-10 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.14)] hover:text-[#f2683a]"><ZoomIn className="size-[18px]" /></button>
           </div>
 
-          {hasMultipleImages ? (
-            <button onClick={() => onChangeImage("next")} aria-label="Show next product image" className="pressable absolute bottom-3 right-3 grid size-11 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_12px_rgba(10,40,90,.18)] sm:bottom-auto sm:top-1/2 sm:-translate-y-1/2"><ChevronRight className="size-6" strokeWidth={2.3} /></button>
-          ) : null}
+          {hasMultipleImages ? <>
+            {/* Both directions on touch. The rail is the only other way back,
+                and on a phone it is a scrolled strip rather than a full list. */}
+            <button onClick={() => onChangeImage("previous")} aria-label="Show previous product image" className={`${arrow} left-3 sm:hidden`}><ChevronLeft className="size-6" strokeWidth={2.3} /></button>
+            <button onClick={() => onChangeImage("next")} aria-label="Show next product image" className={`${arrow} right-3`}><ChevronRight className="size-6" strokeWidth={2.3} /></button>
+          </> : null}
 
-          {/* Magnifier. Overlays the column beside it, the way marketplace
-              galleries do, so the source stays visible while it is open. */}
           {lens && image ? (
             <div
               aria-hidden
@@ -292,7 +376,7 @@ function ProductGallery({ product, selectedImageIndex, onSelectImage, onChangeIm
         </div>
       </div>
 
-      {hasMultipleImages ? <p className="mt-3 text-[11px] font-semibold text-[#778ba6]">{canHover ? "Hover to magnify. " : ""}Use the arrows or the left/right keyboard keys to browse images.</p> : null}
+      {hasMultipleImages ? <p className="mt-3 text-[11px] font-semibold text-[#778ba6]">{canHover ? "Hover to magnify. Use the arrows or the left/right keyboard keys to browse images." : "Swipe the image, or tap a thumbnail, to browse."}</p> : null}
     </div>
   );
 }

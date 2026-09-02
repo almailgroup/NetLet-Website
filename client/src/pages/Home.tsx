@@ -227,7 +227,7 @@ export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [deliveryOpen, setDeliveryOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
-  const headerCompact = useCompactHeader();
+  const { compact: headerCompact, handlers: headerHandlers } = useCompactHeader();
   const openAuth = () => DEMO_MODE
     ? toast("Sign-in is disabled in this static preview.", { description: "Your cart and saved items still work — they are kept in this browser." })
     : setAuthOpen(true);
@@ -261,7 +261,7 @@ export default function Home() {
 
   return <main id="top" className="min-h-screen bg-[#f3f2ed] text-[#0a285a]">
     <AuthDialog open={authOpen} onClose={() => setAuthOpen(false)} />
-    <header data-compact={headerCompact} className="sticky top-0 z-40 border-b border-[#d5dfeb] bg-[#f3f2ed]/95 backdrop-blur-xl">
+    <header {...headerHandlers} data-compact={headerCompact} className="sticky top-0 z-40 border-b border-[#d5dfeb] bg-[#f3f2ed]/95 backdrop-blur-xl">
       {/* Primary bar: logo, a search field that takes all remaining width, then
           the account cluster — the layout marketplaces converge on. */}
       <div className={`container relative flex items-center gap-3 transition-[height] duration-300 ease-out lg:gap-5 ${headerCompact ? "h-[58px] lg:h-[62px]" : "h-[68px] lg:h-[76px]"}`}>

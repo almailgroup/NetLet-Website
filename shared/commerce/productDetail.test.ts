@@ -83,13 +83,18 @@ describe("isExpressEligible", () => {
 });
 
 describe("specifications", () => {
-  it("prefers structured metafields", () => {
+  it("returns the structured metafields and the description together", () => {
+    // Showing only the metafields would drop the spec block a store wrote into
+    // the description, which is usually the longer and more useful half.
     expect(
       specifications({
         attributes: [attribute("custom", "material", "Anodised aluminium")],
-        description: "A lamp.",
+        description: "Display: 55\"\nHDR: HDR10",
       }),
-    ).toEqual({ kind: "rows", rows: [{ label: "material", value: "Anodised aluminium" }] });
+    ).toEqual({
+      rows: [{ label: "material", value: "Anodised aluminium" }],
+      text: 'Display: 55"\nHDR: HDR10',
+    });
   });
 
   it("never lists the review score as a specification", () => {
@@ -98,14 +103,10 @@ describe("specifications", () => {
         attributes: [attribute("reviews", "rating", "5")],
         description: "A lamp.",
       }),
-    ).toEqual({ kind: "text", text: "A lamp." });
+    ).toEqual({ rows: [], text: "A lamp." });
   });
 
-  it("falls back to the description, and reports nothing when there is none", () => {
-    expect(specifications({ attributes: [], description: "Display: 6.9\"" })).toEqual({
-      kind: "text",
-      text: 'Display: 6.9"',
-    });
-    expect(specifications({ attributes: [], description: "   " })).toEqual({ kind: "empty" });
+  it("reports nothing to show when neither half is configured", () => {
+    expect(specifications({ attributes: [], description: "   " })).toEqual({ rows: [], text: "" });
   });
 });

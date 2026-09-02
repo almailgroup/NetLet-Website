@@ -24,7 +24,6 @@ import {
   Heart,
   ListTree,
   LoaderCircle,
-  Maximize2,
   Minus,
   PackageOpen,
   Plus,
@@ -39,8 +38,10 @@ import {
   Wallet,
   X,
   Zap,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useRoute } from "wouter";
 import { toast } from "sonner";
 
@@ -107,53 +108,191 @@ function RelatedCard({ product }: { product: Product }) {
   );
 }
 
-function ImageZoomDialog({ product, selectedImageIndex, onClose, onChangeImage }: { product: Product; selectedImageIndex: number; onClose: () => void; onChangeImage: (direction: "previous" | "next") => void }) {
+/** How many thumbnails the rail shows before collapsing into "View all". */
+const RAIL_LIMIT = 5;
+/** Magnification applied by the hover lens, as a multiple of natural size. */
+const LENS_ZOOM = 2.5;
+
+/**
+ * Full-screen viewer: every image as a grid on the left, the selected one large
+ * on the right, with step zoom. This is the "inspect it properly" surface — the
+ * hover lens is for a glance, this is for deciding.
+ */
+function ImageLightbox({ product, selectedImageIndex, onClose, onSelectImage, onChangeImage }: {
+  product: Product;
+  selectedImageIndex: number;
+  onClose: () => void;
+  onSelectImage: (index: number) => void;
+  onChangeImage: (direction: "previous" | "next") => void;
+}) {
+  const [scale, setScale] = useState(1);
   const image = product.images[selectedImageIndex] ?? product.images[0];
   const hasMultipleImages = product.images.length > 1;
-  return <div className="fixed inset-0 z-[90] flex items-center justify-center bg-[#061b3b]/90 p-3 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label={`Expanded image for ${product.title}`} onClick={onClose}><section className="relative flex h-full w-full max-w-5xl flex-col rounded-[1.5rem] bg-[#fffdf9] p-3 shadow-2xl sm:p-5" onClick={(event) => event.stopPropagation()}><div className="flex items-center justify-between gap-4 px-2 pb-3"><p className="line-clamp-1 text-xs font-extrabold text-[#0a285a]">{product.title}</p><button autoFocus onClick={onClose} aria-label="Close expanded product image" className="glass pressable grid size-10 place-items-center rounded-full"><X className="size-4" /></button></div><div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-[1rem] bg-white">{image ? <img src={image.url} alt={image.altText ?? product.title} className="max-h-full max-w-full object-contain" /> : null}{hasMultipleImages ? <><button onClick={() => onChangeImage("previous")} aria-label="Show previous product image" className="glass pressable absolute left-2 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-xl"><ChevronLeft className="size-7" /></button><button onClick={() => onChangeImage("next")} aria-label="Show next product image" className="glass pressable absolute right-2 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-xl"><ChevronRight className="size-7" /></button><span className="glass glass-navy absolute bottom-3 left-1/2 -translate-x-1/2 rounded-lg px-4 py-2 text-[11px] font-extrabold">{selectedImageIndex + 1} / {product.images.length}</span></> : null}</div></section></div>;
+
+  // A new image at 3x would drop the shopper into a corner of it.
+  useEffect(() => setScale(1), [selectedImageIndex]);
+
+  return (
+    <div className="fixed inset-0 z-[90] flex flex-col bg-white" role="dialog" aria-modal="true" aria-label={`All images for ${product.title}`}>
+      <div className="flex items-start justify-between px-6 pt-5">
+        <div>
+          <h2 className="border-b-2 border-[#0a285a] pb-2 text-lg font-extrabold text-[#0a285a]">Images</h2>
+        </div>
+        <button autoFocus onClick={onClose} aria-label="Close image viewer" className="pressable grid size-10 place-items-center rounded-full text-[#404553] hover:bg-[#f1f1f3]"><X className="size-6" /></button>
+      </div>
+
+      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-6 pb-6 pt-4 lg:flex-row lg:overflow-hidden">
+        <div className="grid h-fit shrink-0 grid-cols-3 gap-3 lg:w-[400px]">
+          {product.images.map((item, index) => (
+            <button
+              key={`${item.url}-${index}`}
+              onClick={() => onSelectImage(index)}
+              aria-label={`Show image ${index + 1} of ${product.images.length}`}
+              aria-current={selectedImageIndex === index}
+              className={`pressable aspect-square overflow-hidden rounded-xl border-2 bg-white p-1 ${selectedImageIndex === index ? "border-[#0a285a]" : "border-[#e2e5eb] hover:border-[#aac0da]"}`}
+            >
+              <img src={item.url} alt="" aria-hidden className="size-full object-contain" />
+            </button>
+          ))}
+        </div>
+
+        <div className="relative flex min-h-[320px] flex-1 items-center justify-center overflow-auto">
+          {image ? <img src={image.url} alt={image.altText ?? product.title} style={{ transform: `scale(${scale})` }} className="max-h-full max-w-full object-contain transition-transform duration-200" /> : null}
+          <div className="absolute right-2 top-2 flex flex-col gap-2">
+            <button onClick={() => setScale(s => Math.min(3, +(s + 0.5).toFixed(1)))} disabled={scale >= 3} aria-label="Zoom in" className="pressable grid size-10 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.16)] disabled:opacity-35"><ZoomIn className="size-5" /></button>
+            <button onClick={() => setScale(s => Math.max(1, +(s - 0.5).toFixed(1)))} disabled={scale <= 1} aria-label="Zoom out" className="pressable grid size-10 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.16)] disabled:opacity-35"><ZoomOut className="size-5" /></button>
+          </div>
+          {hasMultipleImages ? <>
+            <button onClick={() => onChangeImage("previous")} aria-label="Show previous product image" className="pressable absolute left-2 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.16)]"><ChevronLeft className="size-6" /></button>
+            <button onClick={() => onChangeImage("next")} aria-label="Show next product image" className="pressable absolute right-2 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.16)]"><ChevronRight className="size-6" /></button>
+          </> : null}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 /**
- * Gallery card: one large contained image, arrows overlaid on it, and the
- * thumbnails as separate tiles beneath — the reference's arrangement, where
- * the product floats on white rather than filling a tinted square.
+ * Gallery: a thumbnail rail down the left, the current view large beside it,
+ * the inspection tools stacked over its top-right corner, and a magnifier that
+ * opens beside the panel on hover.
+ *
+ * The lens is pointer-driven and mouse-only. It is keyed off a
+ * `(hover: hover) and (pointer: fine)` query rather than a width breakpoint,
+ * because a touch device cannot hover — a panel that appears on tap and then
+ * cannot be dismissed is worse than no panel — and a small laptop can.
  */
-function ProductGallery({ product, selectedImageIndex, onSelectImage, onChangeImage, onZoom }: {
+function ProductGallery({ product, selectedImageIndex, onSelectImage, onChangeImage, onZoom, onShare, onToggleSaved, isSaved }: {
   product: Product;
   selectedImageIndex: number;
   onSelectImage: (index: number) => void;
   onChangeImage: (direction: "previous" | "next") => void;
   onZoom: () => void;
+  onShare: () => void;
+  onToggleSaved: () => void;
+  isSaved: boolean;
 }) {
   const image = product.images[selectedImageIndex] ?? product.images[0];
   const hasMultipleImages = product.images.length > 1;
+  const stageRef = useRef<HTMLDivElement>(null);
+  const [lens, setLens] = useState<{ x: number; y: number } | null>(null);
+  const [canHover, setCanHover] = useState(false);
+
+  useEffect(() => {
+    const query = window.matchMedia("(hover: hover) and (pointer: fine)");
+    const apply = () => setCanHover(query.matches);
+    apply();
+    query.addEventListener("change", apply);
+    return () => query.removeEventListener("change", apply);
+  }, []);
+
+  const overflow = product.images.length - RAIL_LIMIT;
+  const railImages = overflow > 0 ? product.images.slice(0, RAIL_LIMIT) : product.images;
+
+  const trackLens = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!canHover || !image) return;
+    const box = event.currentTarget.getBoundingClientRect();
+    // Clamped so the lens cannot sit half outside the artwork at the edges.
+    const x = Math.min(1, Math.max(0, (event.clientX - box.left) / box.width));
+    const y = Math.min(1, Math.max(0, (event.clientY - box.top) / box.height));
+    setLens({ x, y });
+  };
 
   return (
-    <div className="lg:sticky lg:top-[150px] lg:self-start">
-      <div className="relative rounded-[1.5rem] border border-[#d5dfeb] bg-white p-6 shadow-[0_8px_32px_rgba(10,40,90,.05)]">
-        <div className="flex h-[300px] items-center justify-center sm:h-[420px]">
-          {image
-            ? <img src={image.url} alt={image.altText ?? product.title} className="max-h-full max-w-full object-contain" />
-            : <PackageOpen className="size-24 text-[#e2e5f1]" />}
+    <div className="lg:sticky lg:top-[150px] lg:z-20 lg:self-start">
+      <div className="flex gap-3">
+        {hasMultipleImages ? (
+          <div className="hide-scrollbar flex max-h-[300px] w-[72px] shrink-0 flex-col gap-2.5 overflow-y-auto sm:max-h-[460px]" role="tablist" aria-label="Product images">
+            {railImages.map((item, index) => (
+              <button
+                key={`${item.url}-${index}`}
+                role="tab"
+                onClick={() => onSelectImage(index)}
+                onMouseEnter={() => onSelectImage(index)}
+                aria-label={`Show image ${index + 1} of ${product.images.length}`}
+                aria-selected={selectedImageIndex === index}
+                className={`pressable grid size-[68px] shrink-0 place-items-center overflow-hidden rounded-xl border-2 bg-white p-1 transition-colors ${selectedImageIndex === index ? "border-[#0a285a]" : "border-[#e2e5eb] hover:border-[#aac0da]"}`}
+              >
+                <img src={item.url} alt="" aria-hidden className="size-full object-contain" />
+              </button>
+            ))}
+            {overflow > 0 ? (
+              <button onClick={onZoom} aria-label={`View all ${product.images.length} images`} className="pressable grid size-[68px] shrink-0 place-items-center rounded-xl border-2 border-[#e2e5eb] bg-[#0a285a] text-white hover:border-[#aac0da]">
+                <span className="text-base font-extrabold leading-none">+{overflow}</span>
+                <span className="text-[9px] font-bold leading-none">View all</span>
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+
+        <div className="relative min-w-0 flex-1">
+          <div
+            ref={stageRef}
+            onPointerMove={trackLens}
+            onPointerLeave={() => setLens(null)}
+            className="relative flex h-[300px] items-center justify-center overflow-hidden rounded-[1.25rem] border border-[#e2e5eb] bg-white p-6 sm:h-[460px]"
+          >
+            {image
+              ? <img src={image.url} alt={image.altText ?? product.title} className="max-h-full max-w-full object-contain" />
+              : <PackageOpen className="size-24 text-[#e2e5f1]" />}
+            {lens && image ? (
+              // The region the panel is showing, drawn over the source so the
+              // magnified view is anchored to something the eye can follow.
+              <span
+                aria-hidden
+                className="pointer-events-none absolute size-[130px] rounded-lg border-2 border-[#0a285a]/35 bg-[#0a285a]/8"
+                style={{ left: `calc(${lens.x * 100}% - 65px)`, top: `calc(${lens.y * 100}% - 65px)` }}
+              />
+            ) : null}
+          </div>
+
+          <div className="absolute right-3 top-3 flex flex-col gap-2">
+            <button onClick={onShare} aria-label={`Share ${product.title}`} className="pressable grid size-10 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.14)] hover:text-[#f2683a]"><Share2 className="size-[18px]" /></button>
+            <button onClick={onToggleSaved} aria-pressed={isSaved} aria-label={isSaved ? `Remove ${product.title} from saved` : `Save ${product.title}`} className="pressable grid size-10 place-items-center rounded-full bg-white shadow-[0_2px_10px_rgba(10,40,90,.14)] hover:text-[#e61c38]"><Heart className={`size-[18px] ${isSaved ? "fill-[#e61c38] text-[#e61c38]" : "text-[#0a285a]"}`} /></button>
+            <button onClick={onZoom} aria-label="Open the full image viewer" className="pressable grid size-10 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.14)] hover:text-[#f2683a]"><ZoomIn className="size-[18px]" /></button>
+          </div>
+
+          {hasMultipleImages ? (
+            <button onClick={() => onChangeImage("next")} aria-label="Show next product image" className="pressable absolute bottom-3 right-3 grid size-11 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_12px_rgba(10,40,90,.18)] sm:bottom-auto sm:top-1/2 sm:-translate-y-1/2"><ChevronRight className="size-6" strokeWidth={2.3} /></button>
+          ) : null}
+
+          {/* Magnifier. Overlays the column beside it, the way marketplace
+              galleries do, so the source stays visible while it is open. */}
+          {lens && image ? (
+            <div
+              aria-hidden
+              className="pointer-events-none absolute left-[calc(100%+1rem)] top-0 z-30 hidden h-full w-[520px] rounded-[1.25rem] border border-[#e2e5eb] bg-white bg-no-repeat shadow-[0_18px_50px_rgba(10,40,90,.18)] lg:block"
+              style={{
+                backgroundImage: `url("${image.url}")`,
+                backgroundSize: `${LENS_ZOOM * 100}% ${LENS_ZOOM * 100}%`,
+                backgroundPosition: `${lens.x * 100}% ${lens.y * 100}%`,
+              }}
+            />
+          ) : null}
         </div>
-        {image ? <button onClick={onZoom} aria-label="View image full screen" className="glass pressable absolute bottom-4 right-4 grid size-10 place-items-center rounded-xl"><Maximize2 className="size-4" /></button> : null}
-        {hasMultipleImages ? <>
-          <button onClick={() => onChangeImage("previous")} aria-label="Show previous product image" className="glass pressable absolute left-3 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-xl"><ChevronLeft className="size-6" strokeWidth={2.35} /></button>
-          <button onClick={() => onChangeImage("next")} aria-label="Show next product image" className="glass pressable absolute right-3 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-xl"><ChevronRight className="size-6" strokeWidth={2.35} /></button>
-        </> : null}
       </div>
-      {hasMultipleImages ? <div className="hide-scrollbar mt-4 flex gap-3 overflow-x-auto pb-1">
-        {product.images.map((item, index) => <button
-          key={`${item.url}-${index}`}
-          onClick={() => onSelectImage(index)}
-          aria-label={`Show image ${index + 1} of ${product.images.length}`}
-          aria-current={selectedImageIndex === index}
-          className={`pressable grid size-[72px] shrink-0 place-items-center rounded-xl border-2 bg-white p-1.5 transition-transform ${selectedImageIndex === index ? "-translate-y-0.5 border-[#0a285a]" : "border-[#d5dfeb] hover:border-[#aac0da]"}`}
-        >
-          <img src={item.url} alt={item.altText ?? `${product.title} view ${index + 1}`} className="max-h-full max-w-full object-contain" />
-        </button>)}
-      </div> : null}
-      {hasMultipleImages ? <p className="mt-3 text-[11px] font-semibold text-[#778ba6]">Use the arrows or the left/right keyboard keys to browse images.</p> : null}
+
+      {hasMultipleImages ? <p className="mt-3 text-[11px] font-semibold text-[#778ba6]">{canHover ? "Hover to magnify. " : ""}Use the arrows or the left/right keyboard keys to browse images.</p> : null}
     </div>
   );
 }
@@ -170,25 +309,25 @@ function StarRating({ value, scaleMax, count }: { value: number; scaleMax: numbe
 }
 
 function SpecificationsPanel({ product }: { product: Product }) {
-  const content = specifications(product);
-  if (content.kind === "rows") {
-    return (
-      <dl className="space-y-2.5">
-        {content.rows.map((row) => (
-          <div key={row.label} className="text-sm leading-6">
-            <dt className="inline font-bold text-[#1f2229]">{row.label}: </dt>
-            <dd className="inline text-[#404553]">{row.value}</dd>
-          </div>
-        ))}
-      </dl>
-    );
-  }
-  if (content.kind === "text") {
-    // Pre-wrapped: a spec block written into the description keeps one line per
-    // specification, which is how it reads in the admin.
-    return <p className="text-sm leading-7 whitespace-pre-wrap text-[#404553]">{content.text}</p>;
-  }
-  return <p className="text-sm leading-7 text-[#778ba6]">No specifications have been published for this product yet.</p>;
+  const { rows, text } = specifications(product);
+  if (!rows.length && !text) return <p className="text-sm leading-7 text-[#778ba6]">No specifications have been published for this product yet.</p>;
+  return (
+    <div className="space-y-3">
+      {rows.length ? (
+        <dl className="space-y-2.5">
+          {rows.map((row) => (
+            <div key={row.label} className="text-sm leading-6">
+              <dt className="inline font-bold text-[#1f2229]">{row.label}: </dt>
+              <dd className="inline text-[#404553]">{row.value}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
+      {/* Pre-wrapped: a spec block written into the description keeps one line
+          per specification, which is how it reads in the admin. */}
+      {text ? <p className="text-sm leading-7 whitespace-pre-wrap text-[#404553]">{text}</p> : null}
+    </div>
+  );
 }
 
 function ShippingPolicyPanel({ express }: { express: boolean }) {
@@ -290,13 +429,13 @@ export default function ProductDetail() {
 
   return (
     <main className="min-h-screen bg-background pb-14 text-[#0a285a]">
-      <header className="sticky top-0 z-40 border-b border-[#d5dfeb] bg-background/95 backdrop-blur-xl"><div className="container flex h-[72px] items-center justify-between"><Link href="/" className="flex items-center"><img src={logoImage} alt="NetLet" className="h-10 w-auto max-w-[130px] object-contain" /></Link><div className="flex items-center gap-2"><button onClick={() => void shareProduct(product)} aria-label={`Share ${product.title}`} className="glass pressable grid size-10 place-items-center rounded-full"><Share2 className="size-4" /></button><Link href="/" className="glass pressable inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-xs font-extrabold"><ArrowLeft className="size-4" />Continue shopping</Link></div></div></header>
+      <header className="sticky top-0 z-40 border-b border-[#d5dfeb] bg-background/95 backdrop-blur-xl"><div className="container flex h-[72px] items-center justify-between"><Link href="/" className="flex items-center"><img src={logoImage} alt="NetLet" className="h-10 w-auto max-w-[130px] object-contain" /></Link><div className="flex items-center gap-2"><Link href="/" className="glass pressable inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-xs font-extrabold"><ArrowLeft className="size-4" />Continue shopping</Link></div></div></header>
 
       <div className="container py-6 sm:py-8">
         <nav className="text-[13px] text-[#7e859b]" aria-label="Breadcrumb"><Link href="/" className="hover:text-[#0a285a]">Home</Link><span className="mx-2">/</span><span className="text-[#404553]">{product.title}</span></nav>
 
         <section className="mt-5 grid gap-6 lg:grid-cols-2 lg:gap-8">
-          <ProductGallery product={product} selectedImageIndex={selectedImageIndex} onSelectImage={setSelectedImageIndex} onChangeImage={changeImage} onZoom={() => setZoomOpen(true)} />
+          <ProductGallery product={product} selectedImageIndex={selectedImageIndex} onSelectImage={setSelectedImageIndex} onChangeImage={changeImage} onZoom={() => setZoomOpen(true)} onShare={() => void shareProduct(product)} onToggleSaved={() => toggleSaved(product.id)} isSaved={isSaved} />
 
           <div className="rounded-[1.5rem] border border-[#d5dfeb] bg-white p-6 shadow-[0_8px_32px_rgba(10,40,90,.05)] sm:p-7">
             {product.vendor ? <p className="text-xs font-bold tracking-[.5px] text-[#7e859b] uppercase">{product.vendor}</p> : null}
@@ -356,7 +495,7 @@ export default function ProductDetail() {
 
         <section className="mt-14 border-t border-[#d5dfeb] pt-10"><div className="flex items-end justify-between gap-5"><div><p className="text-[10px] font-extrabold tracking-[.15em] text-[#a44a2b] uppercase">Keep discovering</p><h2 className="display-face mt-2 text-3xl text-[#0a285a] sm:text-4xl">Related products</h2><p className="mt-2 text-sm text-[#536b8c]">Live items selected from the same type, tags, or maker when available.</p></div><Link href="/" className="hidden items-center gap-1 text-xs font-extrabold text-[#0a285a] underline decoration-[#f2683a] decoration-2 underline-offset-4 sm:flex">View all <ArrowRight className="size-3.5" /></Link></div>{related.length ? <div className="hide-scrollbar mt-6 flex gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:overflow-visible">{related.map(item => <RelatedCard key={item.id} product={item} />)}</div> : <div className="mt-6 rounded-2xl border border-dashed border-[#b8c9dc] bg-white/60 px-6 py-10 text-center"><p className="text-sm font-bold text-[#0a285a]">More related finds will appear as the live catalog grows.</p><Link href="/" className="mt-3 inline-block text-xs font-extrabold text-[#f2683a] underline underline-offset-4">Browse the catalog</Link></div>}</section>
       </div>
-      {zoomOpen ? <ImageZoomDialog product={product} selectedImageIndex={selectedImageIndex} onClose={() => setZoomOpen(false)} onChangeImage={changeImage} /> : null}
+      {zoomOpen ? <ImageLightbox product={product} selectedImageIndex={selectedImageIndex} onClose={() => setZoomOpen(false)} onSelectImage={setSelectedImageIndex} onChangeImage={changeImage} /> : null}
     </main>
   );
 }

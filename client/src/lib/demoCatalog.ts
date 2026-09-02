@@ -13,27 +13,72 @@ import type { Product } from "@shared/commerce/types";
 
 const CURRENCY = "KWD";
 
-/** Deterministic placeholder artwork — a soft two-tone panel with the product initials. */
-function placeholderImage(title: string, from: string, to: string): string {
+/**
+ * Deterministic placeholder artwork, varied per view.
+ *
+ * A gallery is only worth building if the thumbnails are distinguishable, so
+ * each view gets its own composition rather than the same panel twice: a hero
+ * three-quarter, a front elevation, a detail crop, a scale diagram, a lifestyle
+ * scene. Inline SVG on purpose — the demo then has no external image host to go
+ * down, rate-limit, or need licensing for.
+ */
+const VIEW_LABELS = [
+  "",
+  "FRONT VIEW",
+  "DETAIL",
+  "DIMENSIONS",
+  "IN THE ROOM",
+  "PORTS &amp; CONNECTIONS",
+  "IN THE BOX",
+  "SIDE PROFILE",
+  "CLOSE UP",
+  "SET UP",
+];
+
+function placeholderImage(title: string, from: string, to: string, view = 0): string {
   const initials = title
     .split(/\s+/)
     .slice(0, 2)
     .map(word => word[0])
     .join("")
     .toUpperCase();
+  const label = VIEW_LABELS[view % VIEW_LABELS.length];
+  const angle = 20 + view * 26;
+
+  // Each view composes a different arrangement of the same two brand tones, so
+  // the rail reads as one product photographed several ways.
+  const scenes = [
+    `<rect x="150" y="212" width="500" height="376" rx="46" fill="#ffffff" opacity="0.66"/>
+     <circle cx="648" cy="160" r="120" fill="#ffffff" opacity="0.22"/>`,
+    `<rect x="214" y="180" width="372" height="440" rx="38" fill="#ffffff" opacity="0.6"/>
+     <rect x="252" y="222" width="296" height="300" rx="20" fill="#0a285a" opacity="0.10"/>`,
+    `<circle cx="400" cy="400" r="238" fill="#ffffff" opacity="0.55"/>
+     <circle cx="400" cy="400" r="132" fill="#0a285a" opacity="0.09"/>`,
+    `<rect x="176" y="256" width="448" height="288" rx="16" fill="#ffffff" opacity="0.6"/>
+     <path d="M176 592 H624 M176 578 V606 M624 578 V606" stroke="#0a285a" stroke-width="6" opacity="0.4" fill="none"/>
+     <path d="M120 256 V544 M106 256 H134 M106 544 H134" stroke="#0a285a" stroke-width="6" opacity="0.4" fill="none"/>`,
+    `<rect x="0" y="470" width="800" height="330" fill="#0a285a" opacity="0.09"/>
+     <rect x="196" y="214" width="408" height="286" rx="26" fill="#ffffff" opacity="0.66"/>
+     <rect x="330" y="500" width="140" height="58" rx="10" fill="#0a285a" opacity="0.14"/>`,
+    `<rect x="170" y="300" width="460" height="200" rx="26" fill="#ffffff" opacity="0.62"/>
+     <g fill="#0a285a" opacity="0.16"><rect x="216" y="358" width="86" height="30" rx="7"/><rect x="330" y="358" width="86" height="30" rx="7"/><rect x="444" y="358" width="86" height="30" rx="7"/><rect x="558" y="358" width="32" height="30" rx="7"/></g>`,
+  ];
+  const scene = scenes[view % scenes.length];
+
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 800 800">
   <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+    <linearGradient id="g" gradientTransform="rotate(${angle})">
       <stop offset="0%" stop-color="${from}"/>
       <stop offset="100%" stop-color="${to}"/>
     </linearGradient>
   </defs>
   <rect width="800" height="800" fill="url(#g)"/>
-  <circle cx="640" cy="168" r="128" fill="#ffffff" opacity="0.22"/>
-  <circle cx="168" cy="640" r="96" fill="#0a285a" opacity="0.06"/>
-  <rect x="176" y="232" width="448" height="336" rx="44" fill="#ffffff" opacity="0.62"/>
-  <text x="400" y="437" font-family="Georgia, 'Times New Roman', serif" font-size="132" font-weight="700"
-        fill="#0a285a" opacity="0.72" text-anchor="middle">${initials}</text>
+  <circle cx="150" cy="662" r="92" fill="#0a285a" opacity="0.05"/>
+  ${scene}
+  <text x="400" y="428" font-family="Georgia, 'Times New Roman', serif" font-size="118" font-weight="700"
+        fill="#0a285a" opacity="0.7" text-anchor="middle">${initials}</text>
+  ${label ? `<text x="400" y="712" font-family="system-ui, sans-serif" font-size="26" font-weight="700" letter-spacing="4"
+        fill="#0a285a" opacity="0.4" text-anchor="middle">${label}</text>` : ""}
 </svg>`;
   return `data:image/svg+xml,${encodeURIComponent(svg.replace(/\n\s*/g, " "))}`;
 }
@@ -51,10 +96,124 @@ type Seed = {
   options?: { name: string; values: string[] };
   /** Review score out of 5, and how many reviews produced it. */
   rating?: [score: number, count: number];
+  /** How many gallery views to generate. Defaults to 2. */
+  views?: number;
   palette: [string, string];
 };
 
 const SEEDS: Seed[] = [
+  {
+    handle: "horizon-55-4k-smart-tv",
+    title: "Horizon 55\" 4K Smart TV",
+    description:
+      "Display: 55\" LED, 3840 x 2160, 60Hz\nHDR: HDR10 and HLG\nProcessor: Quad-core 4K upscaler\nSound: 2 x 10W, Dolby Audio\nPorts: 3 x HDMI 2.1, 2 x USB, optical, Ethernet\nSmart: Built-in apps, screen mirroring, voice remote\nStand: Detachable feet, VESA 200 x 200",
+    productType: "Electronics",
+    vendor: "Horizon Vision",
+    tags: ["Television", "4K", "Bestseller", "Express"],
+    price: 129.5,
+    compareAt: 168,
+    rating: [4.6, 312],
+    views: 8,
+    palette: ["#dbe4ef", "#c2d1e4"],
+  },
+  {
+    handle: "horizon-65-qled-smart-tv",
+    title: "Horizon 65\" QLED Smart TV",
+    description:
+      "Display: 65\" QLED, 3840 x 2160, 120Hz\nHDR: Dolby Vision, HDR10+\nProcessor: Neural 4K engine\nSound: 2.1 channel, 40W, Dolby Atmos\nGaming: ALLM, VRR, 4K at 120Hz over HDMI 2.1\nPorts: 4 x HDMI 2.1, 2 x USB, optical, Ethernet\nStand: Centre pedestal, VESA 400 x 300",
+    productType: "Electronics",
+    vendor: "Horizon Vision",
+    tags: ["Television", "QLED", "New"],
+    price: 289,
+    compareAt: 349,
+    rating: [4.8, 96],
+    views: 9,
+    palette: ["#d5dced", "#b9c6de"],
+  },
+  {
+    handle: "atlas-32-curved-gaming-monitor",
+    title: "Atlas 32\" Curved Gaming Monitor",
+    description:
+      "Display: 31.5\" VA, 2560 x 1440, 1500R curve\nRefresh: 165Hz, 1ms MPRT\nSync: AMD FreeSync Premium\nColour: 90% DCI-P3, 8-bit + FRC\nPorts: 2 x HDMI 2.0, DisplayPort 1.4, headphone out\nErgonomics: Tilt -5 to 15 degrees, VESA 100 x 100",
+    productType: "Electronics",
+    vendor: "Atlas Displays",
+    tags: ["Monitor", "Gaming", "Bestseller", "Express"],
+    price: 96,
+    compareAt: 119,
+    rating: [4.7, 184],
+    views: 7,
+    palette: ["#dde3ec", "#c6d0e0"],
+  },
+  {
+    handle: "meridian-soundbar-31",
+    title: "Meridian 3.1 Soundbar and Subwoofer",
+    description:
+      "Channels: 3.1, 320W total\nSubwoofer: Wireless, 6.5\" driver\nFormats: Dolby Atmos, DTS Virtual:X\nConnections: HDMI eARC, optical, Bluetooth 5.3\nModes: Movie, Music, News, Night\nMounting: Wall bracket included",
+    productType: "Electronics",
+    vendor: "Northbank Audio",
+    tags: ["Audio", "Home cinema", "Express"],
+    price: 74.5,
+    compareAt: 92,
+    rating: [4.5, 128],
+    views: 6,
+    palette: ["#dfe1e6", "#c8ccd6"],
+  },
+  {
+    handle: "cedar-french-door-refrigerator",
+    title: "Cedar French Door Refrigerator 520L",
+    description:
+      "Capacity: 520L total, 348L fridge, 172L freezer\nCooling: Twin inverter, no frost\nEnergy: A++ rating, 42dB\nFeatures: Water dispenser, humidity-controlled crisper, door alarm\nShelving: Four tempered glass shelves, two crispers\nDimensions: 179 x 83 x 71 cm",
+    productType: "Home & Kitchen",
+    vendor: "Cedar Home",
+    tags: ["Appliance", "Kitchen"],
+    price: 445,
+    compareAt: 520,
+    rating: [4.4, 61],
+    views: 6,
+    palette: ["#e4e6e3", "#cdd1cd"],
+  },
+  {
+    handle: "cedar-front-load-washer-9kg",
+    title: "Cedar 9kg Front Load Washing Machine",
+    description:
+      "Capacity: 9kg\nSpin: 1400rpm\nMotor: Brushless inverter, 10-year warranty\nProgrammes: 15 including quick 15, eco 40-60, steam refresh\nEnergy: A rating\nDimensions: 85 x 60 x 58 cm",
+    productType: "Home & Kitchen",
+    vendor: "Cedar Home",
+    tags: ["Appliance", "Laundry", "Express"],
+    price: 218,
+    compareAt: 265,
+    rating: [4.3, 47],
+    views: 5,
+    palette: ["#e6e7e4", "#d0d3ce"],
+  },
+  {
+    handle: "vertex-14-ultrabook",
+    title: "Vertex 14 Ultrabook 16GB / 512GB",
+    description:
+      "Display: 14\" 2.8K OLED, 120Hz, 400 nits\nProcessor: 10-core, up to 4.7GHz\nMemory: 16GB LPDDR5\nStorage: 512GB NVMe SSD\nBattery: 70Wh, up to 14 hours\nPorts: 2 x USB-C Thunderbolt, USB-A, HDMI 2.1, headphone\nWeight: 1.29 kg",
+    productType: "Electronics",
+    vendor: "Vertex Compute",
+    tags: ["Laptop", "Workspace", "New", "Express"],
+    price: 372,
+    compareAt: 429,
+    rating: [4.7, 203],
+    views: 7,
+    palette: ["#e0e3e8", "#c9ced8"],
+  },
+  {
+    handle: "orbit-robot-vacuum-lidar",
+    title: "Orbit Robot Vacuum with LiDAR Mapping",
+    description:
+      "Suction: 5000Pa\nNavigation: LiDAR, multi-floor mapping\nBattery: 5200mAh, up to 180 minutes\nDustbin: 400ml, 300ml water tank\nFeatures: No-go zones, carpet boost, app and voice control\nHeight: 9.6 cm, fits under most furniture",
+    productType: "Home & Kitchen",
+    vendor: "Orbit Living",
+    tags: ["Appliance", "Cleaning", "Bestseller"],
+    price: 118,
+    compareAt: 149,
+    rating: [4.5, 156],
+    views: 6,
+    palette: ["#e2e4e7", "#cbcfd5"],
+  },
   {
     handle: "aurora-desk-lamp",
     title: "Aurora Desk Lamp",
@@ -67,6 +226,7 @@ const SEEDS: Seed[] = [
     compareAt: 31,
     options: { name: "Finish", values: ["Brushed Silver", "Matte Black"] },
     rating: [4.6, 58],
+    views: 5,
     palette: ["#f5e4c9", "#e7d3b4"],
   },
   {
@@ -81,6 +241,7 @@ const SEEDS: Seed[] = [
     compareAt: 52,
     options: { name: "Colour", values: ["Ivory", "Navy", "Graphite"] },
     rating: [4.8, 214],
+    views: 6,
     palette: ["#dce5e9", "#c4d3da"],
   },
   {
@@ -92,6 +253,7 @@ const SEEDS: Seed[] = [
     vendor: "Kiln & Co",
     tags: ["Coffee", "Ceramics"],
     price: 18,
+    views: 4,
     palette: ["#f0ddd0", "#e2c8b6"],
   },
   {
@@ -106,6 +268,7 @@ const SEEDS: Seed[] = [
     compareAt: 74,
     options: { name: "Switch", values: ["Tactile", "Linear", "Silent"] },
     rating: [5.0, 21],
+    views: 7,
     palette: ["#e7edf5", "#ccd9e8"],
   },
   {
@@ -118,6 +281,7 @@ const SEEDS: Seed[] = [
     tags: ["Skincare", "New"],
     price: 8.75,
     rating: [4.7, 96],
+    views: 4,
     palette: ["#f6d9d2", "#eec2b8"],
   },
   {
@@ -274,24 +438,12 @@ function toProduct(seed: Seed, index: number): Product {
           ]
         : []),
     ],
-    images: [
-      {
-        url: placeholderImage(seed.title, seed.palette[0], seed.palette[1]),
-        altText: seed.title,
-        width: 800,
-        height: 800,
-      },
-      {
-        url: placeholderImage(
-          `${seed.title} detail`,
-          seed.palette[1],
-          seed.palette[0]
-        ),
-        altText: `${seed.title} — detail view`,
-        width: 800,
-        height: 800,
-      },
-    ],
+    images: Array.from({ length: seed.views ?? 2 }, (_, view) => ({
+      url: placeholderImage(seed.title, seed.palette[view % 2], seed.palette[(view + 1) % 2], view),
+      altText: view === 0 ? seed.title : `${seed.title} — view ${view + 1}`,
+      width: 800,
+      height: 800,
+    })),
     priceRange: { min: money(seed.price), max: money(seed.price) },
     options: seed.options
       ? [{ name: seed.options.name, values: seed.options.values }]

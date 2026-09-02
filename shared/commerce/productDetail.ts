@@ -23,14 +23,16 @@ export type ProductRating = {
 export type SpecificationRow = { label: string; value: string };
 
 /**
- * What to render under the Specifications tab. Structured metafields win when
- * they exist; otherwise the description carries the spec block, which is how a
- * store without configured metafields writes them.
+ * What to render under the Specifications tab.
+ *
+ * Both halves, not one or the other. A store can have a couple of structured
+ * metafields AND a spec block written into the description; showing only the
+ * metafields would silently drop the longer list, which is the half a shopper
+ * actually came to read. `rows` is empty when no metafields are configured and
+ * `text` is empty when the description is blank — both empty means nothing to
+ * show.
  */
-export type Specifications =
-  | { kind: "rows"; rows: SpecificationRow[] }
-  | { kind: "text"; text: string }
-  | { kind: "empty" };
+export type Specifications = { rows: SpecificationRow[]; text: string };
 
 function toAmount(money: Money | null | undefined): number | null {
   if (!money) return null;
@@ -111,15 +113,14 @@ export function isExpressEligible(product: Pick<Product, "tags">): boolean {
   return product.tags.some((tag) => tag.trim().toLowerCase().replace(/^netlet\s+/, "") === "express");
 }
 
-/** Specification content, preferring structured metafields over the description. */
+/** Specification content: structured metafields first, then the description. */
 export function specifications(
   product: Pick<Product, "attributes" | "description">,
 ): Specifications {
-  const rows = product.attributes
-    .filter((attribute) => attribute.namespace !== REVIEW_NAMESPACE)
-    .map((attribute) => ({ label: attribute.label, value: attribute.value }));
-  if (rows.length) return { kind: "rows", rows };
-
-  const text = product.description.trim();
-  return text ? { kind: "text", text } : { kind: "empty" };
+  return {
+    rows: product.attributes
+      .filter((attribute) => attribute.namespace !== REVIEW_NAMESPACE)
+      .map((attribute) => ({ label: attribute.label, value: attribute.value })),
+    text: product.description.trim(),
+  };
 }

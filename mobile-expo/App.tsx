@@ -18,7 +18,7 @@ const NAVIGATION_ICONS: Record<MobileNavigationLabel, ComponentProps<typeof Feat
   Browse: "menu",
   Saved: "heart",
   Account: "user",
-  Bag: "shopping-bag",
+  Cart: "shopping-bag",
 };
 
 const STOREFRONT_HAPTIC_BRIDGE = `
@@ -119,7 +119,7 @@ const STOREFRONT_HAPTIC_BRIDGE = `
   true;
 `;
 
-function NativeGlassNavigation({ bagCount, onNavigate }: { bagCount: number; onNavigate: (label: MobileNavigationLabel) => void }) {
+function NativeGlassNavigation({ cartCount, onNavigate }: { cartCount: number; onNavigate: (label: MobileNavigationLabel) => void }) {
   const insets = useSafeAreaInsets();
   const nativeGlassAvailable = Platform.OS === "ios" && isLiquidGlassAvailable() && isGlassEffectAPIAvailable();
 
@@ -134,7 +134,7 @@ function NativeGlassNavigation({ bagCount, onNavigate }: { bagCount: number; onN
       {MOBILE_NAVIGATION_LABELS.map((label) => <Pressable key={label} accessibilityRole="button" accessibilityLabel={label} onPress={() => onNavigate(label)} style={({ pressed }) => [styles.nativeNavigationItem, pressed && styles.nativeNavigationItemPressed]}>
         <View>
           <Feather name={NAVIGATION_ICONS[label]} size={25} color={label === "Home" ? "#0A285A" : "#536B8C"} strokeWidth={label === "Home" ? 2.7 : 2.25} />
-          {label === "Bag" && bagCount > 0 ? <View style={styles.bagBadge}><Text style={styles.bagBadgeText}>{bagCount}</Text></View> : null}
+          {label === "Cart" && cartCount > 0 ? <View style={styles.cartBadge}><Text style={styles.cartBadgeText}>{cartCount}</Text></View> : null}
         </View>
         <Text style={[styles.nativeNavigationLabel, label === "Home" && styles.nativeNavigationLabelActive]}>{label}</Text>
       </Pressable>)}
@@ -152,7 +152,7 @@ function NetLetApp() {
   const webViewCapture = useRef<View>(null);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
-  const [bagCount, setBagCount] = useState(0);
+  const [cartCount, setBagCount] = useState(0);
   const [nativeNavigationVisible, setNativeNavigationVisible] = useState(true);
   const [nativeAccountVisible, setNativeAccountVisible] = useState(false);
   const [refreshSnapshot, setRefreshSnapshot] = useState<string | null>(null);
@@ -264,7 +264,7 @@ function NetLetApp() {
 
   if (nativeAccountVisible) return <View style={styles.outer}><StatusBar style="dark" backgroundColor="#F3F2ED" /><NativeAccount onDismiss={dismissNativeAccount} onAuthenticate={startNativeAuthentication} /></View>;
 
-  return <View style={styles.outer}><StatusBar style="dark" backgroundColor="#F3F2ED" /><SafeAreaView style={styles.safe} edges={["top", "left", "right"]}><View style={styles.page}>{failed ? <View style={styles.failure}><Text style={styles.failureTitle}>NetLet needs a connection.</Text><Text style={styles.failureCopy}>Reconnect to the internet, then reload the live marketplace.</Text><Text onPress={() => { setFailed(false); webView.current?.reload(); }} style={styles.retry}>Reload NetLet</Text></View> : <><View ref={webViewCapture} style={styles.webViewWrap} {...pullResponder.panHandlers}><WebView ref={webView} source={{ uri: MOBILE_STOREFRONT_URL }} style={styles.webView} originWhitelist={["https://*"]} startInLoadingState={false} onLoadStart={() => { if (!reloadPending.current) setLoading(true); }} onLoadEnd={handleLoadEnd} onError={() => { setLoading(false); setFailed(true); }} onHttpError={() => { setLoading(false); setFailed(true); }} onMessage={(event) => handleWebMessage(event.nativeEvent.data)} onNavigationStateChange={(state) => { const path = state.url.replace(/^https?:\/\/[^/]+/, "").split("?")[0]; setNativeNavigationVisible(path === "" || path === "/"); }} injectedJavaScriptBeforeContentLoaded={STOREFRONT_HAPTIC_BRIDGE} sharedCookiesEnabled thirdPartyCookiesEnabled javaScriptEnabled domStorageEnabled bounces decelerationRate="normal" automaticallyAdjustContentInsets={false} contentInsetAdjustmentBehavior="never" setSupportMultipleWindows={false} allowsBackForwardNavigationGestures={false} /></View>{refreshSnapshot ? <View pointerEvents="none" style={styles.refreshSnapshot}><Image source={{ uri: refreshSnapshot }} style={styles.refreshSnapshot} /></View> : null}{nativeNavigationVisible ? <NativeGlassNavigation bagCount={bagCount} onNavigate={navigateStorefront} /> : null}{loading ? <View pointerEvents="none" style={styles.loading}><View style={styles.loadingCard}><ActivityIndicator color="#F2683A" /><Text style={styles.loadingText}>{reloadPending.current ? "Refreshing" : "Loading NetLet"}</Text></View></View> : null}</>}</View></SafeAreaView></View>;
+  return <View style={styles.outer}><StatusBar style="dark" backgroundColor="#F3F2ED" /><SafeAreaView style={styles.safe} edges={["top", "left", "right"]}><View style={styles.page}>{failed ? <View style={styles.failure}><Text style={styles.failureTitle}>NetLet needs a connection.</Text><Text style={styles.failureCopy}>Reconnect to the internet, then reload the live marketplace.</Text><Text onPress={() => { setFailed(false); webView.current?.reload(); }} style={styles.retry}>Reload NetLet</Text></View> : <><View ref={webViewCapture} style={styles.webViewWrap} {...pullResponder.panHandlers}><WebView ref={webView} source={{ uri: MOBILE_STOREFRONT_URL }} style={styles.webView} originWhitelist={["https://*"]} startInLoadingState={false} onLoadStart={() => { if (!reloadPending.current) setLoading(true); }} onLoadEnd={handleLoadEnd} onError={() => { setLoading(false); setFailed(true); }} onHttpError={() => { setLoading(false); setFailed(true); }} onMessage={(event) => handleWebMessage(event.nativeEvent.data)} onNavigationStateChange={(state) => { const path = state.url.replace(/^https?:\/\/[^/]+/, "").split("?")[0]; setNativeNavigationVisible(path === "" || path === "/"); }} injectedJavaScriptBeforeContentLoaded={STOREFRONT_HAPTIC_BRIDGE} sharedCookiesEnabled thirdPartyCookiesEnabled javaScriptEnabled domStorageEnabled bounces decelerationRate="normal" automaticallyAdjustContentInsets={false} contentInsetAdjustmentBehavior="never" setSupportMultipleWindows={false} allowsBackForwardNavigationGestures={false} /></View>{refreshSnapshot ? <View pointerEvents="none" style={styles.refreshSnapshot}><Image source={{ uri: refreshSnapshot }} style={styles.refreshSnapshot} /></View> : null}{nativeNavigationVisible ? <NativeGlassNavigation cartCount={cartCount} onNavigate={navigateStorefront} /> : null}{loading ? <View pointerEvents="none" style={styles.loading}><View style={styles.loadingCard}><ActivityIndicator color="#F2683A" /><Text style={styles.loadingText}>{reloadPending.current ? "Refreshing" : "Loading NetLet"}</Text></View></View> : null}</>}</View></SafeAreaView></View>;
 }
 
 export default function App() {
@@ -285,8 +285,8 @@ const styles = StyleSheet.create({
   nativeNavigationItemPressed: { transform: [{ scale: 0.96 }], opacity: 0.72 },
   nativeNavigationLabel: { color: "#536B8C", fontSize: 12, fontWeight: "700" },
   nativeNavigationLabelActive: { color: "#0A285A", fontWeight: "900" },
-  bagBadge: { position: "absolute", right: -9, top: -8, minWidth: 18, height: 18, alignItems: "center", justifyContent: "center", borderRadius: 9, backgroundColor: "#F2683A", borderWidth: 1.5, borderColor: "rgba(255,255,255,0.9)" },
-  bagBadgeText: { color: "#FFFFFF", fontSize: 9, fontWeight: "900" },
+  cartBadge: { position: "absolute", right: -9, top: -8, minWidth: 18, height: 18, alignItems: "center", justifyContent: "center", borderRadius: 9, backgroundColor: "#F2683A", borderWidth: 1.5, borderColor: "rgba(255,255,255,0.9)" },
+  cartBadgeText: { color: "#FFFFFF", fontSize: 9, fontWeight: "900" },
   loading: { ...StyleSheet.absoluteFillObject, zIndex: 10, alignItems: "center", justifyContent: "center", backgroundColor: "transparent" },
   loadingCard: { flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 18, borderWidth: 1, borderColor: "rgba(213, 223, 235, 0.86)", backgroundColor: "rgba(255, 253, 249, 0.76)", paddingHorizontal: 18, paddingVertical: 13 },
   loadingText: { color: "#0A285A", fontSize: 13, fontWeight: "800" },

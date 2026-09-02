@@ -39,6 +39,8 @@ export type ProductVariant = {
   id: string;
   /** Human label such as "Medium / Charcoal" or "Default Title". */
   title: string;
+  /** Merchant stock-keeping code. Null when the store leaves it blank. */
+  sku: string | null;
   price: Money;
   compareAtPrice: Money | null;
   availableForSale: boolean;

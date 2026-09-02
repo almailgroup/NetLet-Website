@@ -38,6 +38,8 @@ type Edges<T> = { edges: Array<{ node: T }> };
 type RawVariant = {
   id: string;
   title: string;
+  /** Optional in the raw shape: Shopify returns null for a blank SKU. */
+  sku?: string | null;
   availableForSale: boolean;
   price: RawMoney;
   compareAtPrice: RawMoney | null;
@@ -114,6 +116,7 @@ function normalizeVariant(v: RawVariant): ProductVariant {
   return {
     id: v.id,
     title: v.title,
+    sku: v.sku?.trim() || null,
     price: normalizeMoney(v.price),
     compareAtPrice: v.compareAtPrice ? normalizeMoney(v.compareAtPrice) : null,
     availableForSale: v.availableForSale,

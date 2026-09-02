@@ -49,6 +49,8 @@ type Seed = {
   compareAt?: number;
   soldOut?: boolean;
   options?: { name: string; values: string[] };
+  /** Review score out of 5, and how many reviews produced it. */
+  rating?: [score: number, count: number];
   palette: [string, string];
 };
 
@@ -60,10 +62,11 @@ const SEEDS: Seed[] = [
       "A warm, dimmable desk light with a brushed aluminium arm. Three colour temperatures move it from focused work to a softer evening glow.",
     productType: "Home & Kitchen",
     vendor: "Lumen Studio",
-    tags: ["Lighting", "Workspace", "Bestseller"],
+    tags: ["Lighting", "Workspace", "Bestseller", "Express"],
     price: 24.5,
     compareAt: 31,
     options: { name: "Finish", values: ["Brushed Silver", "Matte Black"] },
+    rating: [4.6, 58],
     palette: ["#f5e4c9", "#e7d3b4"],
   },
   {
@@ -73,10 +76,11 @@ const SEEDS: Seed[] = [
       "Compact earbuds with active noise cancelling and a pocketable charging case. Around 28 hours of total listening with the case topped up.",
     productType: "Electronics",
     vendor: "Northbank Audio",
-    tags: ["Audio", "Bestseller", "New"],
+    tags: ["Audio", "Bestseller", "New", "Express"],
     price: 39.9,
     compareAt: 52,
     options: { name: "Colour", values: ["Ivory", "Navy", "Graphite"] },
+    rating: [4.8, 214],
     palette: ["#dce5e9", "#c4d3da"],
   },
   {
@@ -97,10 +101,11 @@ const SEEDS: Seed[] = [
       "A 75% layout with hot-swappable switches, a machined aluminium case, and per-key backlighting. Connects over USB-C or Bluetooth.",
     productType: "Electronics",
     vendor: "Meridian Works",
-    tags: ["Workspace", "Bestseller"],
+    tags: ["Workspace", "Bestseller", "Express"],
     price: 62,
     compareAt: 74,
     options: { name: "Switch", values: ["Tactile", "Linear", "Silent"] },
+    rating: [5.0, 21],
     palette: ["#e7edf5", "#ccd9e8"],
   },
   {
@@ -112,6 +117,7 @@ const SEEDS: Seed[] = [
     vendor: "Petal House",
     tags: ["Skincare", "New"],
     price: 8.75,
+    rating: [4.7, 96],
     palette: ["#f6d9d2", "#eec2b8"],
   },
   {
@@ -121,9 +127,10 @@ const SEEDS: Seed[] = [
       "A relaxed shirt cut from washed European linen, with a soft collar and a slightly dropped shoulder. Gets better with every wash.",
     productType: "Style",
     vendor: "Coastline Supply",
-    tags: ["Apparel", "Summer"],
+    tags: ["Apparel", "Summer", "Express"],
     price: 29,
     options: { name: "Size", values: ["S", "M", "L", "XL"] },
+    rating: [4.3, 12],
     palette: ["#e4dfd0", "#d2ccb9"],
   },
   {
@@ -133,8 +140,9 @@ const SEEDS: Seed[] = [
       "Medium-roast arabica ground with green cardamom, in the Gulf tradition. Sweet and aromatic, whether brewed as qahwa or drip.",
     productType: "Grocery",
     vendor: "Souk Roasters",
-    tags: ["Coffee", "Pantry", "Bestseller"],
+    tags: ["Coffee", "Pantry", "Bestseller", "Express"],
     price: 5.25,
+    rating: [4.9, 140],
     palette: ["#dce7cf", "#c6d6b6"],
   },
   {
@@ -147,6 +155,7 @@ const SEEDS: Seed[] = [
     tags: ["Garden", "Ceramics"],
     price: 14.5,
     compareAt: 19,
+    rating: [4.5, 73],
     palette: ["#f0ddd0", "#dcbda9"],
   },
   {
@@ -159,6 +168,7 @@ const SEEDS: Seed[] = [
     tags: ["Travel", "Bags", "New"],
     price: 45,
     options: { name: "Colour", values: ["Sand", "Olive", "Black"] },
+    rating: [4.2, 29],
     palette: ["#dce5e9", "#bfd0d7"],
   },
   {
@@ -168,9 +178,10 @@ const SEEDS: Seed[] = [
       "A shea and lavender balm for pulse points at the end of the day. Unhurried, faintly herbal, and not at all sweet.",
     productType: "Beauty",
     vendor: "Petal House",
-    tags: ["Skincare", "Wellness"],
+    tags: ["Skincare", "Wellness", "Express"],
     price: 11.4,
     soldOut: true,
+    rating: [4.8, 51],
     palette: ["#e6ddef", "#d0c2e0"],
   },
   {
@@ -182,6 +193,7 @@ const SEEDS: Seed[] = [
     vendor: "Souk Roasters",
     tags: ["Pantry", "Gift"],
     price: 6.9,
+    rating: [4.6, 88],
     palette: ["#f7ecc9", "#ecd79c"],
   },
   {
@@ -191,9 +203,10 @@ const SEEDS: Seed[] = [
       "A compact pair of near-field monitors with a woven mid driver and a silk dome tweeter. Balanced enough for mixing, easy to live with.",
     productType: "Electronics",
     vendor: "Northbank Audio",
-    tags: ["Audio", "Workspace"],
+    tags: ["Audio", "Workspace", "Express"],
     price: 118,
     compareAt: 139,
+    rating: [5.0, 9],
     palette: ["#e7edf5", "#c9d8e9"],
   },
 ];
@@ -207,6 +220,9 @@ function toProduct(seed: Seed, index: number): Product {
   const variants = optionValues.map((value, variantIndex) => ({
     id: `demo-variant-${index + 1}-${variantIndex + 1}`,
     title: value,
+    // Shaped like a real merchant code so the product page's SKU line is
+    // representative; like every other value here, it is invented.
+    sku: `NL-${String(index + 1).padStart(3, "0")}-${String(variantIndex + 1).padStart(2, "0")}`,
     price: money(seed.price),
     compareAtPrice: seed.compareAt ? money(seed.compareAt) : null,
     // Sold-out seeds are fully unavailable; otherwise the last variant of a
@@ -239,6 +255,24 @@ function toProduct(seed: Seed, index: number): Product {
         label: "Warranty",
         value: "12 months",
       },
+      // Written in Shopify's own rating-metafield format, so the demo
+      // exercises the same parsing path as a live store.
+      ...(seed.rating
+        ? [
+            {
+              namespace: "reviews",
+              key: "rating",
+              label: "Rating",
+              value: `{"scale_min":"1.0","scale_max":"5.0","value":"${seed.rating[0].toFixed(1)}"}`,
+            },
+            {
+              namespace: "reviews",
+              key: "rating_count",
+              label: "Rating Count",
+              value: String(seed.rating[1]),
+            },
+          ]
+        : []),
     ],
     images: [
       {

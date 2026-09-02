@@ -180,6 +180,7 @@ const VARIANT_FRAGMENT = /* GraphQL */ `
   fragment VariantFields on ProductVariant {
     id
     title
+    sku
     availableForSale
     price { ...MoneyFields }
     compareAtPrice { ...MoneyFields }
@@ -207,6 +208,10 @@ const PRODUCT_FRAGMENT = /* GraphQL */ `
       { namespace: "custom", key: "color" }
       { namespace: "custom", key: "size" }
       { namespace: "custom", key: "warranty" }
+      # Shopify's standard review metafields, written by the Product Reviews
+      # app and most third-party review apps. Absent = the rating is hidden.
+      { namespace: "reviews", key: "rating" }
+      { namespace: "reviews", key: "rating_count" }
     ]) {
       namespace
       key

@@ -44,6 +44,7 @@ import {
   Truck,
   UserRound,
   X,
+  Zap,
 } from "lucide-react";
 import { useCompactHeader } from "@/hooks/useCompactHeader";
 import { appPath } from "@/lib/basePath";
@@ -151,8 +152,15 @@ function CatalogSkeleton({ dark = false }: { dark?: boolean }) {
   return <div className="hide-scrollbar mt-5 flex gap-3 overflow-hidden">{[0, 1, 2, 3].map((item) => <div key={item} className={`min-w-[172px] animate-pulse rounded-2xl border p-3 sm:min-w-[195px] lg:min-w-0 lg:flex-1 ${dark ? "border-[#49658d] bg-white/10" : "border-[#d5dfeb] bg-white"}`}><div className={`aspect-[1.02] rounded-xl ${dark ? "bg-white/10" : "bg-[#e7edf5]"}`} /><div className={`mt-4 h-4 w-2/3 rounded ${dark ? "bg-white/10" : "bg-[#dce5e9]"}`} /><div className={`mt-2 h-3 w-1/3 rounded ${dark ? "bg-white/10" : "bg-[#e7edf5]"}`} /></div>)}</div>;
 }
 
-/** Milliseconds each image holds before the card advances to the next. */
-const PREVIEW_HOLD = 900;
+/**
+ * How long each image holds, and how long it takes to cross into the next.
+ *
+ * The two are coupled: at a 450ms fade a 900ms hold would leave the card
+ * mid-transition half the time, which reads as a blur rather than as a product
+ * turning. The hold is the settled time plus the fade.
+ */
+const PREVIEW_HOLD = 1500;
+const PREVIEW_FADE = 450;
 
 /**
  * Card gallery: every image of the product, previewable without opening it.
@@ -198,7 +206,8 @@ function CardGallery({ product, onDetails, compact }: { product: Product; onDeta
             src={item.url}
             alt={position === 0 ? (item.altText ?? product.title) : ""}
             aria-hidden={position !== 0}
-            className={`aspect-[1.02] w-full object-cover transition-opacity duration-200 ease-out group-hover:scale-105 motion-safe:transition-transform ${position === 0 ? "" : "absolute inset-0"} ${position === index ? "opacity-100" : "opacity-0"}`}
+            style={{ transitionDuration: `${PREVIEW_FADE}ms` }}
+            className={`aspect-[1.02] w-full object-cover transition-opacity ease-out group-hover:scale-105 motion-safe:transition-transform ${position === 0 ? "" : "absolute inset-0"} ${position === index ? "opacity-100" : "opacity-0"}`}
           />
         )) : <div className="grid aspect-[1.02] place-items-center text-sm font-bold text-[#536b8c]">Image processing</div>}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-[#0a285a]/20 to-transparent" />
@@ -228,7 +237,7 @@ function ProductCard({ product, saved, onSave, onShare = () => void shareProduct
   const canBuy = Boolean(variant?.availableForSale);
 
   return (
-    <article className={`product-card group relative flex flex-col overflow-hidden rounded-2xl border border-[#d5dfeb] bg-[#fffdf9] ${compact ? "p-2.5" : "p-3"}`}>
+    <article className={`product-card group relative @container flex flex-col overflow-hidden rounded-2xl border border-[#d5dfeb] bg-[#fffdf9] ${compact ? "p-2.5" : "p-3"}`}>
       <CardGallery product={product} onDetails={onDetails} compact={compact} />
       <span className="type-label absolute left-4 top-4 rounded-full bg-[#fff0ab] px-2 py-1 text-[8px] font-extrabold text-[#0a285a] shadow-sm">{product.productType || "NetLet edit"}</span>
       <button onClick={onSave} aria-label={`Save ${product.title}`} className={`glass pressable absolute right-4 top-4 grid size-7 place-items-center rounded-full ${saved ? "!text-[#f2683a]" : ""}`}><Heart className={`size-3.5 ${saved ? "fill-current" : ""}`} /></button><button onClick={onShare} aria-label={`Share ${product.title}`} className="glass pressable absolute right-12 top-4 grid size-7 place-items-center rounded-full"><Share2 className="size-3.5" /></button>
@@ -236,11 +245,18 @@ function ProductCard({ product, saved, onSave, onShare = () => void shareProduct
         <button onClick={onDetails} className="text-left"><h3 className="type-product line-clamp-2 text-[15px] font-extrabold tracking-[-.025em] text-[#0a285a] transition-colors hover:text-[#f2683a]">{product.title}</h3></button>
         <p className="type-body mt-1 line-clamp-1 text-[10px] font-medium text-[#536b8c]">{product.description || "A considered NetLet everyday find."}</p>
         <div className="mt-2.5 flex items-baseline gap-2"><p className="type-price text-sm font-extrabold tracking-[-.04em] text-[#0a285a]">{formatMoney(product.priceRange.min)}</p>{compareAt && <p className="type-label text-[9px] text-[#778ba6] line-through">{formatMoney(compareAt)}</p>}</div>
-        {/* Pushed to the bottom so the two buttons line up across a row of
-            cards whose titles wrap to different heights. */}
-        <div className="mt-auto flex gap-1.5 pt-3">
-          <button disabled={!canBuy || isAdding} onClick={onAdd} className="glass glass-navy type-control pressable flex flex-1 items-center justify-center gap-1.5 rounded-full px-2 py-2 text-[10px] font-extrabold disabled:cursor-not-allowed disabled:opacity-50" aria-label={canBuy ? `Add ${product.title} to cart` : `${product.title} is unavailable`}>{isAdding ? <LoaderCircle className="size-3.5 animate-spin" /> : <ShoppingBag className="size-3.5" />}{canBuy ? "Add to cart" : "Unavailable"}</button>
-          <button disabled={!canBuy || isAdding} onClick={onBuyNow} className="glass glass-accent type-control pressable flex flex-1 items-center justify-center rounded-full px-2 py-2 text-[10px] font-extrabold disabled:cursor-not-allowed disabled:opacity-50" aria-label={`Buy ${product.title} now`}>Buy now</button>
+        {/* Pushed to the bottom so the pair lines up across a row of cards whose
+            titles wrap to different heights.
+
+            Stacked by default and side by side only once the card itself is
+            wide enough — a container query, not a viewport one, because the
+            same card is 172px in a mobile rail and 280px in the desktop grid.
+            Side by side at 172px gave two ~80px buttons whose labels had to
+            shrink to 10px to fit, which is both cramped and under the 44px
+            touch target a primary action should have. */}
+        <div className="mt-auto flex flex-col gap-2 pt-3 @[15rem]:flex-row">
+          <button disabled={!canBuy || isAdding} onClick={onAdd} className="glass glass-navy type-control pressable flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl px-3 text-xs font-extrabold @[15rem]:w-auto @[15rem]:flex-1 disabled:cursor-not-allowed disabled:opacity-50" aria-label={canBuy ? `Add ${product.title} to cart` : `${product.title} is unavailable`}>{isAdding ? <LoaderCircle className="size-4 animate-spin" /> : <ShoppingBag className="size-4" />}{canBuy ? "Add to cart" : "Unavailable"}</button>
+          <button disabled={!canBuy || isAdding} onClick={onBuyNow} className="glass glass-accent type-control pressable flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl px-3 text-xs font-extrabold @[15rem]:w-auto @[15rem]:flex-1 disabled:cursor-not-allowed disabled:opacity-50" aria-label={`Buy ${product.title} now`}><Zap className="size-4 fill-current" />Buy now</button>
         </div>
       </div>
     </article>

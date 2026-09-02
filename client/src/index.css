@@ -67,6 +67,21 @@
   html {
     scroll-behavior: smooth;
   }
+
+  /* Global motion guard, taken from the old-design reference. The reveal
+     animations opt in via `prefers-reduced-motion: no-preference`, but the
+     header's collapse and the control transitions are plain CSS transitions
+     that would otherwise ignore the preference entirely. Near-zero rather than
+     `none` so transitionend still fires and nothing waits on it forever. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
   body {
     /* Clipped here rather than on <main>. `overflow-x: hidden` on an ancestor
        makes that element the scroll container for anything sticky inside it,

@@ -45,6 +45,7 @@ import {
   UserRound,
   X,
 } from "lucide-react";
+import { useCompactHeader } from "@/hooks/useCompactHeader";
 import { appPath } from "@/lib/basePath";
 import { collectionImages, footerLogoImage, heroImage, logoImage, qrImage } from "@/lib/brandAssets";
 import { toast } from "sonner";
@@ -226,6 +227,7 @@ export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [deliveryOpen, setDeliveryOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
+  const headerCompact = useCompactHeader();
   const openAuth = () => DEMO_MODE
     ? toast("Sign-in is disabled in this static preview.", { description: "Your cart and saved items still work — they are kept in this browser." })
     : setAuthOpen(true);
@@ -259,12 +261,12 @@ export default function Home() {
 
   return <main id="top" className="min-h-screen bg-[#f3f2ed] text-[#0a285a]">
     <AuthDialog open={authOpen} onClose={() => setAuthOpen(false)} />
-    <header className="sticky top-0 z-40 border-b border-[#d5dfeb] bg-[#f3f2ed]/95 backdrop-blur-xl">
+    <header data-compact={headerCompact} className="sticky top-0 z-40 border-b border-[#d5dfeb] bg-[#f3f2ed]/95 backdrop-blur-xl">
       {/* Primary bar: logo, a search field that takes all remaining width, then
           the account cluster — the layout marketplaces converge on. */}
-      <div className="container relative flex h-[68px] items-center gap-3 lg:h-[76px] lg:gap-5">
+      <div className={`container relative flex items-center gap-3 transition-[height] duration-300 ease-out lg:gap-5 ${headerCompact ? "h-[58px] lg:h-[62px]" : "h-[68px] lg:h-[76px]"}`}>
         <div className="absolute left-4 lg:static lg:hidden"><IconButton label="Open menu" onClick={() => setMenuOpen(true)}><Menu className="size-6" /></IconButton></div>
-        <div className="mx-auto lg:mx-0"><Logo /></div>
+        <div className={`mx-auto origin-left transition-transform duration-300 ease-out lg:mx-0 ${headerCompact ? "scale-[.82]" : "scale-100"}`}><Logo /></div>
         <div className="hidden min-w-0 flex-1 lg:block"><LiveSearch catalog={catalog} value={search} onChange={setSearch} onSelectProduct={openProduct} /></div>
         <div className="hidden shrink-0 items-center gap-1.5 lg:flex">
           <AppDownloadAction />
@@ -274,9 +276,9 @@ export default function Home() {
         </div>
         <button onClick={openCart} aria-label="Open your cart" className="glass glass-navy pressable absolute right-4 grid size-10 place-items-center rounded-full lg:hidden"><ShoppingBag className="size-[18px]" /><span className="absolute -right-1 -top-1 grid size-4 place-items-center rounded-full bg-[#f2683a] text-[9px] font-extrabold text-white">{itemCount}</span></button>
       </div>
-      <div className="container pb-3 lg:hidden"><LiveSearch catalog={catalog} value={search} onChange={setSearch} onSelectProduct={openProduct} /></div>
+      <div className={`container overflow-hidden transition-all duration-300 ease-out lg:hidden ${headerCompact ? "max-h-0 pb-0 opacity-0" : "max-h-20 pb-3 opacity-100"}`} aria-hidden={headerCompact}><LiveSearch catalog={catalog} value={search} onChange={setSearch} onSelectProduct={openProduct} /></div>
       {/* Secondary bar: departments only, so the row reads as one rail. */}
-      <nav className="container hidden h-12 items-center gap-2 lg:flex" aria-label="Primary navigation">{categoryRail.map((category, index) => <button key={category.query} onClick={() => selectCategory(category.query)} className={`pressable rounded-full px-3 py-2 text-xs font-semibold ${index === 0 ? "flex items-center gap-2 font-bold" : ""} ${activeCategory === category.query ? "glass glass-navy" : "glass !bg-white/35 !text-[#536b8c]"}`}>{index === 0 && <Menu className="size-4" />}{index === 0 ? "All departments" : category.label}</button>)}<div className="ml-auto flex shrink-0 items-center gap-1.5">
+      <nav className={`container hidden items-center gap-2 overflow-hidden transition-all duration-300 ease-out lg:flex ${headerCompact ? "h-0 -translate-y-1 opacity-0" : "h-12 translate-y-0 opacity-100"}`} aria-hidden={headerCompact} inert={headerCompact} aria-label="Primary navigation">{categoryRail.map((category, index) => <button key={category.query} onClick={() => selectCategory(category.query)} className={`pressable rounded-full px-3 py-2 text-xs font-semibold ${index === 0 ? "flex items-center gap-2 font-bold" : ""} ${activeCategory === category.query ? "glass glass-navy" : "glass !bg-white/35 !text-[#536b8c]"}`}>{index === 0 && <Menu className="size-4" />}{index === 0 ? "All departments" : category.label}</button>)}<div className="ml-auto flex shrink-0 items-center gap-1.5">
         <IconButton label="Notifications" onClick={() => toast("Notifications will appear here once your account is connected.")}><Bell className="size-[19px]" /></IconButton>
         <IconButton label="Saved items" onClick={() => toast(`${saved.length} item${saved.length === 1 ? "" : "s"} saved for later.`)}><Heart className="size-[19px]" /></IconButton>
       </div></nav>

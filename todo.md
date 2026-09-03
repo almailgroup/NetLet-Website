@@ -420,4 +420,4 @@ The current live catalog has no configured custom attributes, so the empty state
 - [x] Verify the current web and retained iOS source trees included in the latest project version.
 - [x] Deliver the complete NetLet source package with concise setup guidance and secret-handling notes.
 
-Source note: the latest project version includes the web storefront, server/shared commerce foundations, tests, and `mobile-expo/` Expo companion source. Runtime secrets are intentionally excluded from source and remain project-managed environment values.
+Source note: the latest project version includes the web storefront, server/shared commerce foundations, tests, and `ios-app/` Expo companion source. Runtime secrets are intentionally excluded from source and remain project-managed environment values.

@@ -57,6 +57,20 @@ answers every tRPC procedure from fixtures in `demoCatalog.ts`. That is what the
 Pages site runs. **The catalog is invented** — sample products and prices, with
 nothing on the page saying so since the preview banner was removed.
 
+## iOS app
+
+`ios-app/` is the whole iOS side: the Expo source, the artwork, and the
+generated Xcode project in `ios-app/ios/`, which is committed so it opens from
+a clone. It is a WebView shell around the published Pages site, so it needs no
+backend running.
+
+`ios/` is generated from `app.json` by `npx expo prebuild` — hand edits to the
+Xcode project are lost the next time that runs. `ios-app/README.md` has the
+run steps and what is deliberately not committed.
+
+Expo Go cannot run it: three of its modules ship native code. `npx expo run:ios`
+is the way in.
+
 ## Checks
 
 `pnpm check` · `pnpm test` · `pnpm build`. Data-layer tests run against a real

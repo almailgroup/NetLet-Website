@@ -30,9 +30,17 @@ You need a Mac with Xcode, and CocoaPods (`brew install cocoapods`).
 
 ```sh
 cd ios-app
-npm install
+npm install          # or pnpm install
 npx expo run:ios
 ```
+
+Install dependencies **before** anything CocoaPods-related: the Podfile shells
+out to `node --print "require.resolve('react-native/package.json')"`, so
+`pod install` fails outright without `node_modules`.
+
+`.npmrc` pins pnpm to `node-linker=hoisted`. pnpm's default layout symlinks
+every package into `.pnpm/`, and React Native's autolinking and Xcode build
+scripts do not follow that reliably. Do not remove it.
 
 That builds and opens the simulator. First run takes 5–15 minutes while it
 compiles the native modules; after that it is fast.

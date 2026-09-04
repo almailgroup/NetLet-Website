@@ -29,6 +29,17 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        // React and the data layer change far less often than the storefront
+        // does, so they are split into their own chunks: a deploy that only
+        // touches NetLet code leaves them cached in every returning browser.
+        manualChunks: {
+          react: ["react", "react-dom"],
+          data: ["@tanstack/react-query", "@trpc/client", "@trpc/react-query", "superjson"],
+        },
+      },
+    },
   },
   server: {
     host: true,

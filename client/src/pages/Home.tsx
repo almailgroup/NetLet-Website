@@ -48,6 +48,8 @@ import {
 } from "lucide-react";
 import { useCompactHeader } from "@/hooks/useCompactHeader";
 import { appPath } from "@/lib/basePath";
+import { SITE_URL, usePageMeta } from "@/lib/usePageMeta";
+import { homeMeta } from "@shared/seo";
 import { collectionImages, footerLogoImage, heroImage, logoImage, qrImage } from "@/lib/brandAssets";
 import { toast } from "sonner";
 
@@ -318,6 +320,7 @@ export default function Home() {
   const [deliveryOpen, setDeliveryOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const { compact: headerCompact, handlers: headerHandlers } = useCompactHeader();
+  usePageMeta(homeMeta(SITE_URL));
   const openAuth = () => DEMO_MODE
     ? toast("Sign-in is disabled in this static preview.", { description: "Your cart and saved items still work — they are kept in this browser." })
     : setAuthOpen(true);

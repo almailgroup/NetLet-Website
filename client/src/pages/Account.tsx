@@ -1,4 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { usePageMeta } from "@/lib/usePageMeta";
+import { privatePageMeta } from "@shared/seo";
 import AuthDialog from "@/components/AuthDialog";
 import { DEMO_MODE } from "@/lib/demoMode";
 import { useState } from "react";
@@ -17,6 +19,7 @@ function AccountCard({ icon, title, children, className = "" }: { icon: ReactNod
 }
 
 export default function Account() {
+  usePageMeta(privatePageMeta("Your account"));
   const [authOpen, setAuthOpen] = useState(false);
   const openAuth = () => DEMO_MODE
     ? toast("Sign-in is disabled in this static preview.", { description: "Your cart and saved items still work — they are kept in this browser." })

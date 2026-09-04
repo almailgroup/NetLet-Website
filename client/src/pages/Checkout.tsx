@@ -3,6 +3,8 @@
  * KNET, Visa, Mastercard, and Google Pay presentation. No payment is processed.
  */
 import { useCart } from "@/contexts/CartContext";
+import { usePageMeta } from "@/lib/usePageMeta";
+import { privatePageMeta } from "@shared/seo";
 import { useCustomer } from "@/contexts/CustomerContext";
 import { CHECKOUT_IS_MOCK_ONLY, KUWAIT_PAYMENT_METHODS } from "@/lib/checkoutMock";
 import { appPath } from "@/lib/basePath";
@@ -29,6 +31,7 @@ function CheckoutDeliveryZone() {
 }
 
 export default function Checkout() {
+  usePageMeta(privatePageMeta("Checkout"));
   const { cart } = useCart();
   const items = cart?.items ?? [];
   const subtotal = cart?.subtotal ?? { amount: "0", currencyCode: "KWD" };

@@ -1,6 +1,8 @@
 import { useCart } from "@/contexts/CartContext";
 import { useCustomer } from "@/contexts/CustomerContext";
 import { appPath } from "@/lib/basePath";
+import { SITE_URL, usePageMeta } from "@/lib/usePageMeta";
+import { breadcrumbJsonLd, privatePageMeta, productJsonLd, productMeta } from "@shared/seo";
 import { logoImage } from "@/lib/brandAssets";
 import { formatMoney } from "@/lib/format";
 import { trpc } from "@/lib/trpc";
@@ -446,6 +448,14 @@ export default function ProductDetail() {
   const [zoomOpen, setZoomOpen] = useState(false);
   const [tab, setTab] = useState<"specifications" | "shipping">("specifications");
   const [quantity, setQuantity] = useState(1);
+
+  // Built before the loading and error returns below, because a hook cannot be
+  // called conditionally. While the product is in flight the page describes
+  // itself as loading rather than inheriting the last product's title.
+  usePageMeta(
+    product ? productMeta(product, SITE_URL) : privatePageMeta("Loading"),
+    product ? [productJsonLd(product, SITE_URL), breadcrumbJsonLd(product, SITE_URL)] : undefined,
+  );
 
   useEffect(() => {
     setSelectedVariantId(product?.variants[0]?.id ?? "");

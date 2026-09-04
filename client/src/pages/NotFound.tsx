@@ -1,9 +1,12 @@
 import { Button } from "@/components/ui/button";
+import { usePageMeta } from "@/lib/usePageMeta";
+import { privatePageMeta } from "@shared/seo";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle, Home } from "lucide-react";
 import { useLocation } from "wouter";
 
 export default function NotFound() {
+  usePageMeta(privatePageMeta("Page not found"));
   const [, setLocation] = useLocation();
 
   const handleGoHome = () => {

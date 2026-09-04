@@ -58,9 +58,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          # VITE_ANALYTICS_* are unset here, so the tag would ship with its
-          # placeholders unsubstituted and fire a broken request per page load.
-          sed -i '/umami/d' dist/public/index.html
+          # The analytics tag is injected at runtime by client/src/lib/analytics.ts
+          # and only when VITE_ANALYTICS_* are set, so there is nothing to strip.
 
           # Pages has no rewrite rules. Serving index.html as 404.html lets
           # wouter resolve deep links such as /products/<handle> on a cold load.

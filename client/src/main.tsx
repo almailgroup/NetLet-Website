@@ -1,3 +1,4 @@
+import { loadAnalytics } from "@/lib/analytics";
 import { DEMO_MODE } from "@/lib/demoMode";
 import { demoLink } from "@/lib/demoLink";
 import { trpc } from "@/lib/trpc";
@@ -56,6 +57,8 @@ const trpcClient = trpc.createClient({
         }),
   ],
 });
+
+loadAnalytics();
 
 createRoot(document.getElementById("root")!).render(
   <trpc.Provider client={trpcClient} queryClient={queryClient}>

@@ -25,6 +25,7 @@ import Home from "./pages/Home";
 const ProductDetail = lazy(() => import("@/pages/ProductDetail"));
 const Checkout = lazy(() => import("@/pages/Checkout"));
 const Account = lazy(() => import("@/pages/Account"));
+const Saved = lazy(() => import("@/pages/Saved"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 /**
@@ -51,6 +52,7 @@ function Router() {
       <Switch>
         <Route path="/" component={Home} />
         <Route path="/account" component={Account} />
+        <Route path="/saved" component={Saved} />
         <Route path="/checkout" component={Checkout} />
         <Route path="/products/:handle" component={ProductDetail} />
         <Route path="/404" component={NotFound} />

@@ -13,4 +13,12 @@ export const ENV = {
   shopifyStoreDomain: process.env.SHOPIFY_STORE_DOMAIN ?? "",
   shopifyStorefrontApiAccessToken: process.env.SHOPIFY_STOREFRONT_API_ACCESS_TOKEN ?? "",
   mistralApiKey: process.env.MISTRAL_API_KEY ?? "",
+  /* Firebase Authentication. The first three come from a service-account key
+     and are secret; the API key is the project's public Web key, and is only
+     here because the password check runs on the server rather than in the
+     browser. All four must be set before Firebase is used at all. */
+  firebaseProjectId: process.env.FIREBASE_PROJECT_ID ?? "",
+  firebaseClientEmail: process.env.FIREBASE_CLIENT_EMAIL ?? "",
+  firebasePrivateKey: process.env.FIREBASE_PRIVATE_KEY ?? "",
+  firebaseApiKey: process.env.FIREBASE_API_KEY ?? "",
 };

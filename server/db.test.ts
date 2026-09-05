@@ -27,13 +27,17 @@ beforeAll(async () => {
   const client = new PGlite();
   db = drizzle(client);
 
-  // Apply the generated migration verbatim: if it cannot build the schema, the
-  // migration shipped to production is wrong, and this fails loudly.
+  // Apply every generated migration verbatim, in order: if they cannot build
+  // the schema, what ships to production is wrong, and this fails loudly.
+  // All of them, not just the first — a later migration is exactly where a
+  // schema change lands, and testing only 0000 would test the schema as it was.
   const dir = path.resolve(import.meta.dirname, "../drizzle");
-  const file = readdirSync(dir).find(name => name.endsWith(".sql"));
-  if (!file) throw new Error("No migration found in drizzle/");
-  for (const statement of readFileSync(path.join(dir, file), "utf-8").split("--> statement-breakpoint")) {
-    if (statement.trim()) await client.exec(statement);
+  const files = readdirSync(dir).filter(name => name.endsWith(".sql")).sort();
+  if (!files.length) throw new Error("No migration found in drizzle/");
+  for (const file of files) {
+    for (const statement of readFileSync(path.join(dir, file), "utf-8").split("--> statement-breakpoint")) {
+      if (statement.trim()) await client.exec(statement);
+    }
   }
 }, 60_000);
 
@@ -119,6 +123,33 @@ describe("upserts", () => {
       // @ts-expect-error - the point is that the database refuses it too.
       db.insert(customerNotificationPreferences).values({ userId: user.id, kind: "not_a_kind", enabled: true })
     ).rejects.toThrow();
+  });
+});
+
+describe("firebase-backed accounts", () => {
+  // The partial index is what lets Firebase and local accounts share the table:
+  // without the WHERE clause, the second local account collides on null.
+  it("allows many accounts with no firebase uid, but only one per uid", async () => {
+    await db.insert(users).values([
+      { email: "local-one@example.com", passwordHash: "scrypt$1$1$1$a$b" },
+      { email: "local-two@example.com", passwordHash: "scrypt$1$1$1$a$b" },
+    ]);
+    await db.insert(users).values({ email: "fb-one@example.com", firebaseUid: "uid-shared" });
+
+    await expect(
+      db.insert(users).values({ email: "fb-two@example.com", firebaseUid: "uid-shared" }),
+    ).rejects.toThrow();
+  });
+
+  // A Firebase account has no local digest, which is the whole point of the
+  // column becoming nullable.
+  it("stores an account with no password hash", async () => {
+    const [row] = await db
+      .insert(users)
+      .values({ email: "no-digest@example.com", firebaseUid: "uid-no-digest" })
+      .returning();
+    expect(row.passwordHash).toBeNull();
+    expect(row.firebaseUid).toBe("uid-no-digest");
   });
 });
 

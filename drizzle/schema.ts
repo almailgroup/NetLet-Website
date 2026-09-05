@@ -17,7 +17,7 @@
  * require them, but a declared width documents the field and keeps the schema
  * portable.
  */
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
   boolean,
   index,
@@ -41,10 +41,20 @@ export const notificationKind = pgEnum("notification_kind", notificationKinds);
 /**
  * Shoppers, identified by email address.
  *
- * Identity lives here rather than with an external provider: `passwordHash`
- * holds a self-describing scrypt digest (see `server/_core/password.ts`), never
- * a password. The address is stored lowercased so that a unique index is
- * genuinely case-insensitive regardless of the column's collation.
+ * Where the credential lives depends on how the deployment is configured.
+ * With Firebase Authentication set up, Firebase holds the password and this row
+ * is a mirror: `firebaseUid` links the two, and `passwordHash` is null. Without
+ * it, the server falls back to its own scrypt digest (see
+ * `server/_core/password.ts`) in `passwordHash` and `firebaseUid` is null.
+ * Exactly one of the two is set for any given account.
+ *
+ * The row exists in both cases because the serial `id` is what
+ * `customer_preferences`, `saved_products`, `customer_notification_preferences`
+ * and `order_tracking_events` all point at. Moving accounts to Firebase must
+ * not turn four foreign keys into string lookups against a remote service.
+ *
+ * The address is stored lowercased so that a unique index is genuinely
+ * case-insensitive regardless of the column's collation.
  */
 export const users = pgTable(
   "users",
@@ -52,8 +62,13 @@ export const users = pgTable(
     id: serial("id").primaryKey(),
     /** Login identifier. Normalised to lowercase before it ever reaches here. */
     email: varchar("email", { length: 320 }).notNull(),
-    /** scrypt digest with its parameters embedded, so the cost can be raised later. */
-    passwordHash: varchar("password_hash", { length: 255 }).notNull(),
+    /**
+     * scrypt digest with its parameters embedded, so the cost can be raised
+     * later. Null for accounts whose password Firebase holds.
+     */
+    passwordHash: varchar("password_hash", { length: 255 }),
+    /** Firebase Authentication's uid for this shopper, when Firebase owns it. */
+    firebaseUid: varchar("firebase_uid", { length: 128 }),
     /** Optional display name; the shopper may never supply one. */
     name: varchar("name", { length: 255 }),
     role: userRole("role").notNull().default("user"),
@@ -61,7 +76,12 @@ export const users = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
   },
-  table => [uniqueIndex("users_email_unique").on(table.email)]
+  table => [
+    uniqueIndex("users_email_unique").on(table.email),
+    // Partial, so the many rows with no Firebase account do not all collide on
+    // a single null.
+    uniqueIndex("users_firebase_uid_unique").on(table.firebaseUid).where(sql`${table.firebaseUid} is not null`),
+  ]
 );
 
 /** One row per shopper: locale, delivery area, and the active Shopify cart. */

@@ -44,7 +44,10 @@ export async function getDb() {
  */
 export async function createUser(input: {
   email: string;
-  passwordHash: string;
+  /** Null when Firebase holds the password for this account. */
+  passwordHash?: string | null;
+  /** Set when the account was created in Firebase Authentication. */
+  firebaseUid?: string | null;
   name?: string | null;
 }): Promise<User | null> {
   const db = await getDb();
@@ -59,7 +62,8 @@ export async function createUser(input: {
   try {
     await db.insert(users).values({
       email,
-      passwordHash: input.passwordHash,
+      passwordHash: input.passwordHash ?? null,
+      firebaseUid: input.firebaseUid ?? null,
       name: input.name ?? null,
       role,
       lastSignedIn: new Date(),
@@ -103,6 +107,43 @@ export async function getUserById(id: number): Promise<User | undefined> {
   if (!db) return undefined;
   const rows = await db.select().from(users).where(eq(users.id, id)).limit(1);
   return rows[0];
+}
+
+/**
+ * The local row for a Firebase account, created on first sign-in if missing.
+ *
+ * A shopper can exist in Firebase without a row here — registered against
+ * another deployment, added by hand in the console, or created before this
+ * database was restored. Sign-in is the moment to reconcile that, rather than
+ * refusing an account Firebase has already accepted the password for.
+ *
+ * When a row for the address exists but predates Firebase, it is adopted:
+ * the uid is written onto it and the local digest cleared, so the shopper keeps
+ * their saved products instead of starting a second account beside them.
+ */
+export async function linkFirebaseUser(input: {
+  firebaseUid: string;
+  email: string;
+  name?: string | null;
+}): Promise<User | null> {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not configured");
+
+  const email = input.email.trim().toLowerCase();
+
+  const byUid = await db.select().from(users).where(eq(users.firebaseUid, input.firebaseUid)).limit(1);
+  if (byUid[0]) return byUid[0];
+
+  const existing = await getUserByEmail(email);
+  if (existing) {
+    await db
+      .update(users)
+      .set({ firebaseUid: input.firebaseUid, passwordHash: null, name: existing.name ?? input.name ?? null })
+      .where(eq(users.id, existing.id));
+    return (await getUserByEmail(email)) ?? null;
+  }
+
+  return createUser({ email, firebaseUid: input.firebaseUid, name: input.name ?? null });
 }
 
 export async function touchLastSignedIn(id: number): Promise<void> {

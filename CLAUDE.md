@@ -36,6 +36,22 @@ are what makes the glass legible at all.
 `backdrop-filter` on an opaque fill is wasted work; only the clear tint and
 `.glass-field` carry it.
 
+## Accounts
+
+Registered accounts live in **Firebase Authentication** — the password, and
+later the reset and verification flows that come with it. `users` in Postgres
+keeps one mirror row per shopper, linked by `firebase_uid`, because saved
+products, delivery area, notification preferences and order tracking are all
+foreign keys to its serial `id`.
+
+The password is checked server-side, through Identity Toolkit rather than the
+Firebase Web SDK, so no Firebase code ships to the client and the session stays
+the same httpOnly cookie. `docs/FIREBASE.md` is the setup.
+
+With the four `FIREBASE_*` variables unset, the same endpoints fall back to the
+local scrypt digest in `password_hash`. Exactly one of the two is set on any
+given account.
+
 ## Languages
 
 The storefront ships in English and Arabic, from one dictionary in

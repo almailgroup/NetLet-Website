@@ -95,6 +95,38 @@ if (process.env.JWT_SECRET?.trim() || !process.env.DATABASE_URL?.trim()) {
     "Set JWT_SECRET to a long random string: openssl rand -base64 32");
 }
 
+/* ------------------------------------------------------------- firebase --- */
+
+// All four or none: with any one missing the server quietly uses the local
+// password digest instead, which looks like "Firebase isn't working" rather
+// than like a typo. Naming the missing ones is the whole point of this check.
+const firebaseVars = [
+  "FIREBASE_PROJECT_ID",
+  "FIREBASE_CLIENT_EMAIL",
+  "FIREBASE_PRIVATE_KEY",
+  "FIREBASE_API_KEY",
+] as const;
+const firebaseMissing = firebaseVars.filter(name => !process.env[name]?.trim());
+
+if (firebaseMissing.length === 0) {
+  const key = process.env.FIREBASE_PRIVATE_KEY ?? "";
+  if (!key.includes("BEGIN PRIVATE KEY")) {
+    add("blocked", "FIREBASE_PRIVATE_KEY", "does not look like a PEM private key",
+      "Copy the private_key value from the service-account JSON verbatim, in double quotes");
+  } else if (!key.includes("\\n") && !key.includes("\n")) {
+    add("blocked", "FIREBASE_PRIVATE_KEY", "is a single line with no newlines — every signature will fail",
+      'Keep the JSON\'s \\n escapes: FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\\nMIIE...\\n-----END PRIVATE KEY-----\\n"');
+  } else {
+    add("ok", "Firebase", `accounts are stored in project ${process.env.FIREBASE_PROJECT_ID}`);
+  }
+} else if (firebaseMissing.length === firebaseVars.length) {
+  add("warn", "Firebase", "not set — registration and sign-in use the local password digest instead",
+    "Optional. docs/FIREBASE.md has the fifteen-minute setup");
+} else {
+  add("blocked", "Firebase", `partly set: ${firebaseMissing.join(", ")} missing, so the local password path is used instead`,
+    "Set all four, or clear them all to stay on the local path — see docs/FIREBASE.md");
+}
+
 /* ---------------------------------------------------------------- build --- */
 
 const serverBundle = path.join(ROOT, "dist", "index.js");

@@ -6,8 +6,9 @@
  * drifts every time the first is touched.
  */
 import { formatMoney } from "@/lib/format";
+import { isExpressEligible, productRating, savingsPercent } from "@shared/commerce/productDetail";
 import type { Product } from "@shared/commerce/types";
-import { Heart, LoaderCircle, Share2, ShoppingBag, Zap } from "lucide-react";
+import { Heart, LoaderCircle, Share2, ShoppingBag, Star, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -105,30 +106,66 @@ export function CardGallery({ product, onDetails, compact }: { product: Product;
 
 export function ProductCard({ product, saved, onSave, onShare = () => void shareProduct(product), onDetails, onAdd, onBuyNow, isAdding, compact = false }: { product: Product; saved: boolean; onSave: () => void; onShare?: () => void; onDetails: () => void; onAdd: () => void; onBuyNow: () => void; isAdding: boolean; compact?: boolean }) {
   const variant = product.variants[0];
+  const price = variant?.price ?? product.priceRange.min;
   const compareAt = variant?.compareAtPrice;
   const canBuy = Boolean(variant?.availableForSale);
+  const savings = savingsPercent(price, compareAt);
+  const rating = productRating(product.attributes);
+  const express = isExpressEligible(product);
 
   return (
-    <article className={`product-card group relative @container flex flex-col overflow-hidden rounded-2xl border border-[#d5dfeb] bg-[#fffdf9] ${compact ? "p-2.5" : "p-3"}`}>
-      <CardGallery product={product} onDetails={onDetails} compact={compact} />
-      <span className="type-label absolute left-4 top-4 rounded-full bg-[#fff0ab] px-2 py-1 text-[8px] font-extrabold text-[#0a285a] shadow-sm">{product.productType || "NetLet edit"}</span>
-      <button onClick={onSave} aria-pressed={saved} aria-label={saved ? `Remove ${product.title} from saved` : `Save ${product.title}`} className={`glass pressable absolute right-4 top-4 grid size-7 place-items-center rounded-full ${saved ? "!text-[#f2683a]" : ""}`}><Heart className={`size-3.5 ${saved ? "fill-current" : ""}`} /></button><button onClick={onShare} aria-label={`Share ${product.title}`} className="glass pressable absolute right-12 top-4 grid size-7 place-items-center rounded-full"><Share2 className="size-3.5" /></button>
-      <div className="flex flex-1 flex-col px-0.5 pb-0.5 pt-3">
-        <button onClick={onDetails} className="text-left"><h3 className="type-product line-clamp-2 text-[15px] font-extrabold tracking-[-.025em] text-[#0a285a] transition-colors hover:text-[#f2683a]">{product.title}</h3></button>
-        <p className="type-body mt-1 line-clamp-1 text-[10px] font-medium text-[#536b8c]">{product.description || "A considered NetLet everyday find."}</p>
-        <div className="mt-2.5 flex items-baseline gap-2"><p className="type-price text-sm font-extrabold tracking-[-.04em] text-[#0a285a]">{formatMoney(product.priceRange.min)}</p>{compareAt && <p className="type-label text-[9px] text-[#778ba6] line-through">{formatMoney(compareAt)}</p>}</div>
-        {/* Pushed to the bottom so the pair lines up across a row of cards whose
-            titles wrap to different heights.
+    <article className={`product-card group relative @container flex flex-col overflow-hidden rounded-2xl border border-[#d5dfeb] bg-[#fffdf9] transition-shadow duration-300 hover:shadow-[0_14px_40px_rgba(10,40,90,.10)] ${compact ? "p-2.5" : "p-3"}`}>
+      <div className="relative">
+        <CardGallery product={product} onDetails={onDetails} compact={compact} />
 
-            Stacked by default and side by side only once the card itself is
-            wide enough — a container query, not a viewport one, because the
-            same card is 172px in a mobile rail and 280px in the desktop grid.
-            Side by side at 172px gave two ~80px buttons whose labels had to
-            shrink to 10px to fit, which is both cramped and under the 44px
-            touch target a primary action should have. */}
+        {/* Signals a shopper scans for before anything else, stacked down the
+            leading edge so they read in one pass instead of competing. */}
+        <div className="pointer-events-none absolute left-1.5 top-1.5 flex flex-col items-start gap-1.5">
+          {savings > 0 ? (
+            <span className="rounded-full bg-[#f2683a] px-2 py-1 text-[10px] font-extrabold text-white shadow-sm">−{savings}%</span>
+          ) : null}
+          {express ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-[#0a285a] px-2 py-1 text-[9px] font-extrabold text-white shadow-sm">
+              <Zap className="size-2.5 fill-current" />Express
+            </span>
+          ) : null}
+          {!canBuy ? (
+            <span className="rounded-full bg-[#404553] px-2 py-1 text-[9px] font-extrabold text-white shadow-sm">Sold out</span>
+          ) : null}
+        </div>
+
+        <button onClick={onSave} aria-pressed={saved} aria-label={saved ? `Remove ${product.title} from saved` : `Save ${product.title}`} className={`glass pressable absolute right-1.5 top-1.5 grid size-8 place-items-center rounded-full ${saved ? "!text-[#e61c38]" : ""}`}><Heart className={`size-4 ${saved ? "fill-current" : ""}`} /></button>
+        {/* Share is secondary: it appears on hover on a pointer device and is
+            always present on touch, where there is no hover to reveal it. */}
+        <button onClick={onShare} aria-label={`Share ${product.title}`} className="glass pressable absolute right-1.5 top-11 grid size-8 place-items-center rounded-full transition-opacity duration-200 @[15rem]:opacity-0 @[15rem]:group-hover:opacity-100 @[15rem]:group-focus-within:opacity-100"><Share2 className="size-3.5" /></button>
+      </div>
+
+      <div className="flex flex-1 flex-col px-0.5 pb-0.5 pt-3">
+        {product.vendor ? <p className="type-label text-[9px] font-bold tracking-[.1em] text-[#8fa3bd] uppercase">{product.vendor}</p> : null}
+        <button onClick={onDetails} className="mt-0.5 text-left"><h3 className="type-product line-clamp-2 text-[15px] font-extrabold tracking-[-.025em] text-[#0a285a] transition-colors group-hover:text-[#f2683a]">{product.title}</h3></button>
+
+        {rating ? (
+          <div className="mt-1.5 flex items-center gap-1" aria-label={`Rated ${rating.value} out of ${rating.scaleMax}${rating.count ? ` from ${rating.count} reviews` : ""}`}>
+            <Star className="size-3 fill-[#ffb800] text-[#ffb800]" aria-hidden />
+            <span className="text-[11px] font-extrabold text-[#1f2229]">{rating.value}</span>
+            {rating.count ? <span className="text-[11px] text-[#8fa3bd]">({rating.count})</span> : null}
+          </div>
+        ) : null}
+
+        {/* Price is the largest thing in the body: it is what the eye returns
+            to, and the saving is only legible next to the old price. */}
+        <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+          <p className="type-price text-lg font-extrabold tracking-[-.04em] text-[#0a285a]">{formatMoney(price)}</p>
+          {compareAt ? <p className="type-label text-[11px] text-[#9ea4b5] line-through">{formatMoney(compareAt)}</p> : null}
+        </div>
+
         <div className="mt-auto flex flex-col gap-2 pt-3 @[15rem]:flex-row">
-          <button disabled={!canBuy || isAdding} onClick={onAdd} className="glass glass-navy type-control pressable flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl px-3 text-xs font-extrabold @[15rem]:w-auto @[15rem]:flex-1 disabled:cursor-not-allowed disabled:opacity-50" aria-label={canBuy ? `Add ${product.title} to cart` : `${product.title} is unavailable`}>{isAdding ? <LoaderCircle className="size-4 animate-spin" /> : <ShoppingBag className="size-4" />}{canBuy ? "Add to cart" : "Unavailable"}</button>
-          <button disabled={!canBuy || isAdding} onClick={onBuyNow} className="glass glass-accent type-control pressable flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl px-3 text-xs font-extrabold @[15rem]:w-auto @[15rem]:flex-1 disabled:cursor-not-allowed disabled:opacity-50" aria-label={`Buy ${product.title} now`}><Zap className="size-4 fill-current" />Buy now</button>
+          <button disabled={!canBuy || isAdding} onClick={onAdd} className="glass pressable flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl border border-[#0a285a]/15 px-3 text-xs font-extrabold text-[#0a285a] @[15rem]:w-auto @[15rem]:flex-1 disabled:cursor-not-allowed disabled:opacity-50" aria-label={canBuy ? `Add ${product.title} to cart` : `${product.title} is unavailable`}>{isAdding ? <LoaderCircle className="size-4 animate-spin" /> : <ShoppingBag className="size-4" />}{canBuy ? "Add to cart" : "Unavailable"}</button>
+          {/* Buy now is the accent because it is the shorter path to a
+              completed order; add-to-cart keeps the quieter clear tint so the
+              pair reads as a primary and a secondary rather than two primaries
+              shouting at each other. */}
+          <button disabled={!canBuy || isAdding} onClick={onBuyNow} className="glass glass-accent pressable flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl px-3 text-xs font-extrabold @[15rem]:w-auto @[15rem]:flex-1 disabled:cursor-not-allowed disabled:opacity-50" aria-label={`Buy ${product.title} now`}><Zap className="size-4 fill-current" />Buy now</button>
         </div>
       </div>
     </article>

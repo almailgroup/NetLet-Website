@@ -190,7 +190,7 @@
   }
   @media (min-width: 1024px) {
     header > .container:first-child > div:nth-of-type(3) {
-      margin-left: auto;
+      margin-inline-start: auto;
       flex-shrink: 0;
     }
     /* The bag pill. Matched on .glass-navy since the old bg-[#0a285a] utility

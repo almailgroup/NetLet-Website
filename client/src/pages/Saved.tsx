@@ -16,6 +16,7 @@ import { appPath } from "@/lib/basePath";
 import { logoImage } from "@/lib/brandAssets";
 import { trpc } from "@/lib/trpc";
 import { usePageMeta } from "@/lib/usePageMeta";
+import { useTranslation } from "@/lib/useTranslation";
 import { privatePageMeta } from "@shared/seo";
 import type { Product } from "@shared/commerce/types";
 import { ArrowLeft, ArrowRight, Heart, LoaderCircle } from "lucide-react";
@@ -27,6 +28,7 @@ export default function Saved() {
   usePageMeta(privatePageMeta("Saved items"));
   const [, navigate] = useLocation();
   const { savedIds, toggleSaved } = useCustomer();
+  const { t } = useTranslation();
   const { addItem, loading: cartLoading } = useCart();
   const { data: catalog = [], isLoading } = trpc.commerce.products.list.useQuery({ first: 60 });
 
@@ -47,23 +49,23 @@ export default function Saved() {
 
   const addToCart = async (product: Product) => {
     const variant = product.variants[0];
-    if (!variant?.availableForSale) return toast.error("This item is currently unavailable.");
+    if (!variant?.availableForSale) return toast.error(t("cart.itemUnavailable"));
     try {
       await addItem(variant.id);
-      toast.success(`${product.title} added to your cart`);
+      toast.success(t("cart.added", { name: product.title }));
     } catch {
-      toast.error("We couldn't add that item just now. Please try again.");
+      toast.error(t("cart.addFailed"));
     }
   };
 
   const buyNow = async (product: Product) => {
     const variant = product.variants[0];
-    if (!variant?.availableForSale) return toast.error("This item is currently unavailable.");
+    if (!variant?.availableForSale) return toast.error(t("cart.itemUnavailable"));
     try {
       await addItem(variant.id);
       window.location.assign(appPath("/checkout"));
     } catch {
-      toast.error("We couldn't start that order just now. Please try again.");
+      toast.error(t("cart.buyFailed"));
     }
   };
 
@@ -71,26 +73,28 @@ export default function Saved() {
     <main className="min-h-screen bg-background pb-16 text-[#0a285a]">
       <header className="sticky top-0 z-40 border-b border-[#d5dfeb] bg-background/95 backdrop-blur-xl">
         <div className="container flex h-[72px] items-center justify-between">
-          <Link href="/" className="flex items-center" aria-label="NetLet home">
+          <Link href="/" className="flex items-center" aria-label={t("header.home")}>
             <img src={logoImage} alt="NetLet" className="h-10 w-auto max-w-[130px] object-contain" />
           </Link>
           <Link href="/" className="glass pressable inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-xs font-extrabold">
-            <ArrowLeft className="size-4" />Continue shopping
+            <ArrowLeft className="size-4 rtl:-scale-x-100" />{t("header.continueShopping")}
           </Link>
         </div>
       </header>
 
       <div className="container py-8 sm:py-10">
-        <p className="text-[10px] font-extrabold tracking-[.15em] text-[#a44a2b] uppercase">Your list</p>
-        <h1 className="display-face mt-2 text-4xl text-[#0a285a] sm:text-5xl">Saved for later.</h1>
+        <p className="text-[10px] font-extrabold tracking-[.15em] text-[#a44a2b] uppercase">{t("saved.eyebrow")}</p>
+        <h1 className="display-face mt-2 text-4xl text-[#0a285a] sm:text-5xl">{t("saved.title")}</h1>
         <p className="mt-3 max-w-xl text-sm leading-6 text-[#536b8c]">
-          {savedProducts.length
-            ? `${savedProducts.length} item${savedProducts.length === 1 ? "" : "s"} kept aside. They stay here while you browse.`
-            : "Tap the heart on any product and it will wait for you here."}
+          {savedProducts.length === 0
+            ? t("saved.emptyPrompt")
+            : savedProducts.length === 1
+              ? t("saved.countOne")
+              : t("saved.count", { count: savedProducts.length })}
         </p>
         {missingCount > 0 ? (
           <p className="mt-3 rounded-xl border border-[#f2b69e] bg-white px-4 py-3 text-xs font-semibold text-[#a44a2b]">
-            {missingCount} saved item{missingCount === 1 ? " is" : "s are"} no longer in the catalog.
+            {missingCount === 1 ? t("saved.unavailableOne") : t("saved.unavailableCount", { count: missingCount })}
           </p>
         ) : null}
 
@@ -109,7 +113,7 @@ export default function Saved() {
                 saved
                 onSave={() => {
                   toggleSaved(product.id);
-                  toast(`${product.title} removed from saved.`);
+                  toast(t("saved.removed", { name: product.title }));
                 }}
                 onDetails={() => openProduct(product)}
                 onAdd={() => void addToCart(product)}
@@ -123,22 +127,22 @@ export default function Saved() {
             <div className="mx-auto grid size-14 place-items-center rounded-full bg-[#e7edf5] text-[#f2683a]">
               <Heart className="size-6" />
             </div>
-            <h2 className="mt-5 text-lg font-extrabold text-[#0a285a]">Nothing saved yet.</h2>
+            <h2 className="mt-5 text-lg font-extrabold text-[#0a285a]">{t("saved.emptyTitle")}</h2>
             <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-[#536b8c]">
-              Browsing is easier when you can put things aside. Save anything that catches your eye and compare it here.
+              {t("saved.emptyNote")}
             </p>
             <button
               onClick={() => navigate("/")}
               className="glass glass-navy pressable mt-6 inline-flex items-center gap-2 rounded-full px-5 py-3 text-xs font-extrabold"
             >
-              Browse the catalog <ArrowRight className="size-4" />
+              {t("saved.browse")} <ArrowRight className="size-4 rtl:-scale-x-100" />
             </button>
           </div>
         )}
 
         {cartLoading ? (
           <p className="mt-6 flex items-center justify-center gap-2 text-xs font-semibold text-[#778ba6]">
-            <LoaderCircle className="size-3.5 animate-spin" />Updating your cart…
+            <LoaderCircle className="size-3.5 animate-spin" />{t("saved.updatingCart")}
           </p>
         ) : null}
       </div>

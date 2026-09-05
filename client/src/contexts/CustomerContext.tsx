@@ -1,6 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
-import { kuwaitDeliveryZones, type LocaleCode } from "@shared/customer";
+import { kuwaitDeliveryZones } from "@shared/customer";
+import { directionFor, type LocaleCode } from "@shared/i18n/dictionary";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 const SAVED_STORAGE_KEY = "netlet:saved-product-ids";
@@ -28,15 +29,10 @@ function writeValue(key: string, value: string | string[] | null) {
   else window.localStorage.setItem(key, Array.isArray(value) ? JSON.stringify(value) : value);
 }
 
-const copy = {
-  en: { home: "Home", browse: "Browse", saved: "Saved", account: "Account", bag: "Cart", language: "العربية", delivery: "Deliver to", deliverySetup: "Delivery details pending configuration" },
-  ar: { home: "الرئيسية", browse: "تصفح", saved: "المحفوظات", account: "الحساب", bag: "عربة التسوق", language: "English", delivery: "التوصيل إلى", deliverySetup: "تفاصيل التوصيل بانتظار الإعداد" },
-} as const;
-
 type CustomerContextValue = {
   locale: LocaleCode;
   isArabic: boolean;
-  labels: { [K in keyof typeof copy.en]: string };
+  direction: "rtl" | "ltr";
   setLocale: (locale: LocaleCode) => void;
   toggleLocale: () => void;
   savedIds: string[];
@@ -64,9 +60,12 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
     onSuccess: () => saved.refetch(),
   });
 
+  // The one writer of <html lang/dir>. Direction is a document property, and
+  // setting it here — above every page — is what makes the `ms-`/`me-`/
+  // `start-`/`end-` utilities throughout the tree flip together.
   useEffect(() => {
-    document.documentElement.lang = locale === "ar" ? "ar" : "en";
-    document.documentElement.dir = locale === "ar" ? "rtl" : "ltr";
+    document.documentElement.lang = locale;
+    document.documentElement.dir = directionFor(locale);
   }, [locale]);
 
   useEffect(() => {
@@ -123,7 +122,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   const value = useMemo<CustomerContextValue>(() => ({
     locale,
     isArabic: locale === "ar",
-    labels: copy[locale],
+    direction: directionFor(locale),
     setLocale,
     toggleLocale,
     savedIds,

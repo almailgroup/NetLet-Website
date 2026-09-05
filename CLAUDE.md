@@ -36,6 +36,29 @@ are what makes the glass legible at all.
 `backdrop-filter` on an opaque fill is wasted work; only the clear tint and
 `.glass-field` carry it.
 
+## Languages
+
+The storefront ships in English and Arabic, from one dictionary in
+`shared/i18n/dictionary.ts`. `ar` is typed as a complete record of the English
+keys, so a missing translation is a type error rather than an English word
+appearing mid-Arabic-sentence; `shared/i18n/dictionary.test.ts` also fails on an
+Arabic entry that is still a copy of the English, or that has drifted from its
+`{placeholder}` set.
+
+Two rules keep the RTL layout honest:
+
+- **No physical direction utilities in page code.** `ms-`/`me-`/`ps-`/`pe-`/
+  `start-`/`end-`/`text-start`/`border-s`. `left-1/2 -translate-x-1/2` is the
+  exception — it centres, it does not take a side. The unused shadcn primitives
+  under `components/ui/` are left as they came.
+- **Arrows and chevrons that mean "onward" carry `rtl:-scale-x-100`.** So do
+  the gradients and masks that shade toward the text, or the Arabic headline
+  ends up sitting on the bright side of the hero.
+
+Merchant data (product titles, spec rows) is in whatever language the merchant
+typed. Specification rows and description text carry `dir="auto"` so each takes
+its own direction and the punctuation lands on the right side.
+
 ## Deploys
 
 Pages serves `main` at `/` — "Deploy from a branch", one branch only. The

@@ -3,6 +3,7 @@
  * and NetLet Orange — with shopping state provided by Shopify’s normalized cart contract.
  */
 import { Toaster } from "@/components/ui/sonner";
+import { useTranslation } from "@/lib/useTranslation";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { CartProvider } from "@/contexts/CartContext";
 import { CustomerProvider } from "@/contexts/CustomerContext";
@@ -63,6 +64,19 @@ function Router() {
   );
 }
 
+/**
+ * Toasts, on the shopper's side of the screen.
+ *
+ * Sonner needs both: `dir` so the text lays out right-to-left, and a mirrored
+ * corner, because a notice pinned to the bottom-right of an Arabic page sits
+ * away from where the eye is already working. Rendered inside the provider so
+ * it re-reads the locale when the shopper switches.
+ */
+function StorefrontToaster() {
+  const { direction } = useTranslation();
+  return <Toaster richColors dir={direction} position={direction === "rtl" ? "bottom-left" : "bottom-right"} />;
+}
+
 function App() {
   return (
     <ErrorBoundary>
@@ -70,7 +84,7 @@ function App() {
         <TooltipProvider>
           <CustomerProvider>
             <CartProvider>
-              <Toaster richColors position="bottom-right" />
+              <StorefrontToaster />
               <LiquidGlassFilters />
               <Router />
             </CartProvider>

@@ -1,4 +1,6 @@
-export type LocaleCode = "en" | "ar";
+import type { MessageKey } from "./i18n/dictionary";
+
+export type { LocaleCode } from "./i18n/dictionary";
 
 export type DeliveryZone = {
   id: string;
@@ -24,11 +26,12 @@ export const kuwaitDeliveryZones: DeliveryZone[] = [
 export const notificationKinds = ["price_drop", "bag_reminder", "new_arrival", "delivery_update"] as const;
 export type NotificationKind = (typeof notificationKinds)[number];
 
-export const notificationLabels: Record<NotificationKind, string> = {
-  price_drop: "Saved-item price drops",
-  bag_reminder: "Bag reminders",
-  new_arrival: "New arrivals",
-  delivery_update: "Delivery updates",
+/** Message keys, not sentences: the storefront ships in two languages. */
+export const notificationLabelKeys: Record<NotificationKind, MessageKey> = {
+  price_drop: "notification.priceDrop",
+  bag_reminder: "notification.bagReminder",
+  new_arrival: "notification.newArrival",
+  delivery_update: "notification.deliveryUpdate",
 };
 
 export const defaultNotificationPreferences: Record<NotificationKind, boolean> = {

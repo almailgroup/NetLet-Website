@@ -9,10 +9,12 @@ import { trpc } from "@/lib/trpc";
 import { LoaderCircle, LogIn, UserPlus, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { useTranslation } from "@/lib/useTranslation";
 
 type Mode = "signin" | "register";
 
 export default function AuthDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { t, tError } = useTranslation();
   const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -39,7 +41,7 @@ export default function AuthDialog({ open, onClose }: { open: boolean; onClose: 
 
   const settle = async (displayName: string | null) => {
     await utils.auth.me.invalidate();
-    toast.success(displayName ? `Welcome, ${displayName}.` : "You're signed in.");
+    toast.success(displayName ? t("auth.welcomeName", { name: displayName }) : t("auth.signedIn"));
     setPassword("");
     onClose();
   };
@@ -78,13 +80,13 @@ export default function AuthDialog({ open, onClose }: { open: boolean; onClose: 
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 id="netlet-auth-title" className="display-face text-3xl text-[#0a285a]">
-              {isRegister ? "Create your account" : "Welcome back"}
+              {t(isRegister ? "auth.createTitle" : "auth.signInTitle")}
             </h2>
             <p className="type-label mt-1 text-[#536b8c]">
-              {isRegister ? "Save finds and sync your cart across devices." : "Sign in to pick up where you left off."}
+              {t(isRegister ? "auth.createNote" : "auth.signInNote")}
             </p>
           </div>
-          <button onClick={onClose} aria-label="Close" className="glass pressable grid size-9 shrink-0 place-items-center rounded-full">
+          <button onClick={onClose} aria-label={t("auth.close")} className="glass pressable grid size-9 shrink-0 place-items-center rounded-full">
             <X className="size-4" />
           </button>
         </div>
@@ -92,7 +94,7 @@ export default function AuthDialog({ open, onClose }: { open: boolean; onClose: 
         <form onSubmit={submit} className="mt-6 space-y-3">
           {isRegister && (
             <label className="block">
-              <span className="type-label text-[#0a285a]">Name <span className="text-[#778ba6]">(optional)</span></span>
+              <span className="type-label text-[#0a285a]">{t("auth.name")} <span className="text-[#778ba6]">{t("auth.optional")}</span></span>
               <input
                 value={name}
                 onChange={event => setName(event.target.value)}
@@ -102,10 +104,11 @@ export default function AuthDialog({ open, onClose }: { open: boolean; onClose: 
             </label>
           )}
           <label className="block">
-            <span className="type-label text-[#0a285a]">Email</span>
+            <span className="type-label text-[#0a285a]">{t("auth.email")}</span>
             <input
               ref={emailRef}
               type="email"
+              dir="ltr"
               required
               value={email}
               onChange={event => setEmail(event.target.value)}
@@ -114,9 +117,10 @@ export default function AuthDialog({ open, onClose }: { open: boolean; onClose: 
             />
           </label>
           <label className="block">
-            <span className="type-label text-[#0a285a]">Password</span>
+            <span className="type-label text-[#0a285a]">{t("auth.password")}</span>
             <input
               type="password"
+              dir="ltr"
               required
               minLength={10}
               value={password}
@@ -124,13 +128,13 @@ export default function AuthDialog({ open, onClose }: { open: boolean; onClose: 
               autoComplete={isRegister ? "new-password" : "current-password"}
               className="glass-field type-body mt-1.5 h-11 w-full rounded-xl px-4 outline-none"
             />
-            {isRegister && <span className="type-label mt-1 block text-[#778ba6]">At least 10 characters.</span>}
+            {isRegister && <span className="type-label mt-1 block text-[#778ba6]">{t("auth.passwordHint")}</span>}
           </label>
 
           {/* aria-live so the failure is announced, not just drawn. */}
           {error && (
             <p role="alert" aria-live="polite" className="type-label rounded-xl bg-[#fdeceb] px-3 py-2 text-[#8c2f22]">
-              {error}
+              {tError(error)}
             </p>
           )}
 
@@ -140,17 +144,17 @@ export default function AuthDialog({ open, onClose }: { open: boolean; onClose: 
             className="glass glass-navy pressable flex h-12 w-full items-center justify-center gap-2 rounded-xl text-sm font-extrabold disabled:opacity-60"
           >
             {pending ? <LoaderCircle className="size-4 animate-spin" /> : isRegister ? <UserPlus className="size-4" /> : <LogIn className="size-4" />}
-            {isRegister ? "Create account" : "Sign in"}
+            {t(isRegister ? "account.createAccount" : "header.signIn")}
           </button>
         </form>
 
         <p className="type-label mt-5 text-center text-[#536b8c]">
-          {isRegister ? "Already have an account?" : "New to NetLet?"}{" "}
+          {t(isRegister ? "auth.haveAccount" : "auth.newHere")}{" "}
           <button
             onClick={() => { setMode(isRegister ? "signin" : "register"); setError(""); }}
             className="font-extrabold text-[#f2683a] underline underline-offset-4"
           >
-            {isRegister ? "Sign in" : "Create one"}
+            {t(isRegister ? "header.signIn" : "auth.createOne")}
           </button>
         </p>
       </div>

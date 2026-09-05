@@ -4,7 +4,6 @@ import { appPath } from "@/lib/basePath";
 import { SITE_URL, usePageMeta } from "@/lib/usePageMeta";
 import { breadcrumbJsonLd, privatePageMeta, productJsonLd, productMeta } from "@shared/seo";
 import { logoImage } from "@/lib/brandAssets";
-import { formatMoney } from "@/lib/format";
 import { trpc } from "@/lib/trpc";
 import { canUseGalleryKeyboard, galleryIndex } from "@shared/commerce/gallery";
 import {
@@ -46,6 +45,9 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useRoute } from "wouter";
 import { toast } from "sonner";
+import { useMoney, useTranslation, type Translate } from "@/lib/useTranslation";
+import { shareProduct } from "@/components/ProductCard";
+import type { MessageKey } from "@shared/i18n/dictionary";
 
 /**
  * NetLet's delivery terms, not per-product data — the same six rows the
@@ -53,58 +55,26 @@ import { toast } from "sonner";
  * the merchant has actually tagged for it.
  */
 const SHIPPING_POLICY = [
-  {
-    icon: Truck,
-    title: "Standard Delivery",
-    body: "Delivered within 2–4 business days to all six governorates of Kuwait.",
-  },
-  {
-    icon: Tag,
-    title: "Delivery Charges",
-    body: "Free delivery on orders over KWD 10. A flat KWD 1.500 fee applies to smaller orders.",
-  },
-  {
-    icon: Wallet,
-    title: "Payment Options",
-    body: "Pay securely online by card, or choose Cash on Delivery — whichever suits you best.",
-  },
-  {
-    icon: RotateCcw,
-    title: "Easy Returns",
-    body: "Changed your mind? Return within 14 days in original, unused condition for a full refund.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Buyer Protection",
-    body: "Every order is covered by NetLet Buyer Protection, from checkout to your doorstep.",
-  },
-] as const;
-
-async function shareProduct(product: Product) {
-  const url = `${window.location.origin}/products/${encodeURIComponent(product.handle)}`;
-  const shareData = { title: product.title, text: `Take a look at ${product.title} on NetLet.`, url };
-  try {
-    const nativeBridge = (window as Window & { ReactNativeWebView?: { postMessage: (message: string) => void } }).ReactNativeWebView;
-    if (nativeBridge) return nativeBridge.postMessage(JSON.stringify({ type: "share", ...shareData }));
-    if (navigator.share) return await navigator.share(shareData);
-    await navigator.clipboard.writeText(url);
-    toast.success("Product link copied to your clipboard.");
-  } catch (error) {
-    if ((error as DOMException)?.name !== "AbortError") toast.error("We couldn’t share that product right now.");
-  }
-}
+  { icon: Truck, title: "shipping.standard.title", body: "shipping.standard.body" },
+  { icon: Tag, title: "shipping.charges.title", body: "shipping.charges.body" },
+  { icon: Wallet, title: "shipping.payment.title", body: "shipping.payment.body" },
+  { icon: RotateCcw, title: "shipping.returns.title", body: "shipping.returns.body" },
+  { icon: ShieldCheck, title: "shipping.protection.title", body: "shipping.protection.body" },
+] as const satisfies readonly { icon: typeof Truck; title: MessageKey; body: MessageKey }[];
 
 function RelatedCard({ product }: { product: Product }) {
+  const { t } = useTranslation();
+  const money = useMoney();
   const image = product.images[0];
   return (
     <article className="group min-w-[190px] overflow-hidden rounded-2xl border border-[#d5dfeb] bg-[#fffdf9] p-3 sm:min-w-0">
-      <button onClick={() => window.location.assign(appPath(`/products/${encodeURIComponent(product.handle)}`))} className="block w-full text-left">
+      <button onClick={() => window.location.assign(appPath(`/products/${encodeURIComponent(product.handle)}`))} className="block w-full text-start">
         <div className="relative overflow-hidden rounded-xl bg-[#e7edf5]">
           {image ? <img src={image.url} alt={image.altText ?? product.title} className="aspect-square w-full object-cover transition-transform duration-500 group-hover:scale-105" /> : <div className="aspect-square" />}
         </div>
-        <p className="mt-3 text-[9px] font-extrabold tracking-[.12em] text-[#a44a2b] uppercase">{product.productType || "NetLet edit"}</p>
+        <p className="mt-3 text-[9px] font-extrabold tracking-[.12em] text-[#a44a2b] uppercase">{product.productType || t("product.netletEdit")}</p>
         <h3 className="mt-1 line-clamp-2 text-sm font-extrabold tracking-[-.025em] text-[#0a285a] group-hover:text-[#f2683a]">{product.title}</h3>
-        <p className="mt-2 text-base font-extrabold tracking-[-.04em] text-[#0a285a]">{formatMoney(product.priceRange.min)}</p>
+        <p className="mt-2 text-base font-extrabold tracking-[-.04em] text-[#0a285a]">{money(product.priceRange.min)}</p>
       </button>
     </article>
   );
@@ -134,6 +104,7 @@ function ImageLightbox({ product, selectedImageIndex, onClose, onSelectImage, on
   onSelectImage: (index: number) => void;
   onChangeImage: (direction: "previous" | "next") => void;
 }) {
+  const { direction, t } = useTranslation();
   const [scale, setScale] = useState(1);
   const image = product.images[selectedImageIndex] ?? product.images[0];
   const hasMultipleImages = product.images.length > 1;
@@ -149,16 +120,16 @@ function ImageLightbox({ product, selectedImageIndex, onClose, onSelectImage, on
     if (!start || !hasMultipleImages || scale > 1) return;
     const travelled = event.clientX - start.x;
     if (Math.abs(travelled) < SWIPE_THRESHOLD || Math.abs(travelled) < Math.abs(event.clientY - start.y)) return;
-    onChangeImage(travelled < 0 ? "next" : "previous");
+    onChangeImage(swipeDirection(travelled, direction));
   };
 
   return (
-    <div className="fixed inset-0 z-[90] flex flex-col bg-white" role="dialog" aria-modal="true" aria-label={`All images for ${product.title}`}>
+    <div className="fixed inset-0 z-[90] flex flex-col bg-white" role="dialog" aria-modal="true" aria-label={t("product.allImages", { name: product.title })}>
       <div className="flex items-start justify-between px-6 pt-5">
         <div>
-          <h2 className="border-b-2 border-[#0a285a] pb-2 text-lg font-extrabold text-[#0a285a]">Images</h2>
+          <h2 className="border-b-2 border-[#0a285a] pb-2 text-lg font-extrabold text-[#0a285a]">{t("product.images")}</h2>
         </div>
-        <button autoFocus onClick={onClose} aria-label="Close image viewer" className="pressable grid size-10 place-items-center rounded-full text-[#404553] hover:bg-[#f1f1f3]"><X className="size-6" /></button>
+        <button autoFocus onClick={onClose} aria-label={t("product.closeViewer")} className="pressable grid size-10 place-items-center rounded-full text-[#404553] hover:bg-[#f1f1f3]"><X className="size-6" /></button>
       </div>
 
       {/* On a phone the grid used to sit above the image, so opening the viewer
@@ -170,7 +141,7 @@ function ImageLightbox({ product, selectedImageIndex, onClose, onSelectImage, on
             <button
               key={`${item.url}-${index}`}
               onClick={() => onSelectImage(index)}
-              aria-label={`Show image ${index + 1} of ${product.images.length}`}
+              aria-label={t("product.showImage", { index: index + 1, total: product.images.length })}
               aria-current={selectedImageIndex === index}
               className={`pressable aspect-square overflow-hidden rounded-xl border-2 bg-white p-1 ${selectedImageIndex === index ? "border-[#0a285a]" : "border-[#e2e5eb] hover:border-[#aac0da]"}`}
             >
@@ -186,14 +157,14 @@ function ImageLightbox({ product, selectedImageIndex, onClose, onSelectImage, on
           className="relative order-1 flex min-h-[46vh] flex-1 touch-pan-y items-center justify-center overflow-auto lg:order-2 lg:min-h-[320px]"
         >
           {image ? <img src={image.url} alt={image.altText ?? product.title} style={{ transform: `scale(${scale})` }} className="max-h-full max-w-full object-contain transition-transform duration-200" /> : null}
-          <div className="absolute right-2 top-2 flex flex-col gap-2">
-            <button onClick={() => setScale(s => Math.min(3, +(s + 0.5).toFixed(1)))} disabled={scale >= 3} aria-label="Zoom in" className="pressable grid size-10 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.16)] disabled:opacity-35"><ZoomIn className="size-5" /></button>
-            <button onClick={() => setScale(s => Math.max(1, +(s - 0.5).toFixed(1)))} disabled={scale <= 1} aria-label="Zoom out" className="pressable grid size-10 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.16)] disabled:opacity-35"><ZoomOut className="size-5" /></button>
+          <div className="absolute end-2 top-2 flex flex-col gap-2">
+            <button onClick={() => setScale(s => Math.min(3, +(s + 0.5).toFixed(1)))} disabled={scale >= 3} aria-label={t("product.zoomIn")} className="pressable grid size-10 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.16)] disabled:opacity-35"><ZoomIn className="size-5" /></button>
+            <button onClick={() => setScale(s => Math.max(1, +(s - 0.5).toFixed(1)))} disabled={scale <= 1} aria-label={t("product.zoomOut")} className="pressable grid size-10 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.16)] disabled:opacity-35"><ZoomOut className="size-5" /></button>
           </div>
           {hasMultipleImages ? <>
-            <button onClick={() => onChangeImage("previous")} aria-label="Show previous product image" className="pressable absolute left-2 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.16)]"><ChevronLeft className="size-6" /></button>
-            <button onClick={() => onChangeImage("next")} aria-label="Show next product image" className="pressable absolute right-2 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.16)]"><ChevronRight className="size-6" /></button>
-            <span className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-[#0a285a]/85 px-3 py-1 text-[11px] font-bold text-white" aria-live="polite">{selectedImageIndex + 1} / {product.images.length}</span>
+            <button onClick={() => onChangeImage("previous")} aria-label={t("product.prevImage")} className="pressable absolute start-2 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.16)]"><ChevronLeft className="size-6 rtl:-scale-x-100" /></button>
+            <button onClick={() => onChangeImage("next")} aria-label={t("product.nextImage")} className="pressable absolute end-2 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.16)]"><ChevronRight className="size-6 rtl:-scale-x-100" /></button>
+            <span className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-[#0a285a]/85 px-3 py-1 text-[11px] font-bold text-white" aria-live="polite"><span dir="ltr">{selectedImageIndex + 1} / {product.images.length}</span></span>
           </> : null}
         </div>
       </div>
@@ -213,6 +184,18 @@ function ImageLightbox({ product, selectedImageIndex, onClose, onSelectImage, on
  */
 /** Horizontal travel, in px, that counts as a swipe rather than a tap. */
 const SWIPE_THRESHOLD = 45;
+
+/**
+ * Which image a horizontal drag asks for.
+ *
+ * A swipe means "pull the next one into view", and in Arabic the rail runs the
+ * other way — dragging left there is asking for the previous image, not the
+ * next one.
+ */
+function swipeDirection(travelled: number, direction: "ltr" | "rtl"): "previous" | "next" {
+  const forward = direction === "rtl" ? travelled > 0 : travelled < 0;
+  return forward ? "next" : "previous";
+}
 
 /**
  * Gallery.
@@ -237,6 +220,7 @@ function ProductGallery({ product, selectedImageIndex, onSelectImage, onChangeIm
   onToggleSaved: () => void;
   isSaved: boolean;
 }) {
+  const { direction, t } = useTranslation();
   const image = product.images[selectedImageIndex] ?? product.images[0];
   const hasMultipleImages = product.images.length > 1;
   const [lens, setLens] = useState<{ x: number; y: number } | null>(null);
@@ -288,7 +272,7 @@ function ProductGallery({ product, selectedImageIndex, onSelectImage, onChangeIm
     const travelled = event.clientX - start.x;
     // Ignore a mostly-vertical drag: that is the page being scrolled.
     if (Math.abs(travelled) < SWIPE_THRESHOLD || Math.abs(travelled) < Math.abs(event.clientY - start.y)) return;
-    onChangeImage(travelled < 0 ? "next" : "previous");
+    onChangeImage(swipeDirection(travelled, direction));
   };
 
   const arrow = "pressable absolute top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_12px_rgba(10,40,90,.18)] sm:size-11";
@@ -301,7 +285,7 @@ function ProductGallery({ product, selectedImageIndex, onSelectImage, onChangeIm
             ref={railRef}
             className="hide-scrollbar order-2 flex w-full min-w-0 shrink-0 gap-2.5 overflow-auto sm:order-1 sm:max-h-[460px] sm:w-[72px] sm:flex-col"
             role="tablist"
-            aria-label="Product images"
+            aria-label={t("product.productImages")}
           >
             {railImages.map((item, index) => (
               <button
@@ -309,7 +293,7 @@ function ProductGallery({ product, selectedImageIndex, onSelectImage, onChangeIm
                 role="tab"
                 onClick={() => onSelectImage(index)}
                 onMouseEnter={() => { if (canHover) onSelectImage(index); }}
-                aria-label={`Show image ${index + 1} of ${product.images.length}`}
+                aria-label={t("product.showImage", { index: index + 1, total: product.images.length })}
                 aria-selected={selectedImageIndex === index}
                 className={`pressable grid size-[62px] shrink-0 place-items-center overflow-hidden rounded-xl border-2 bg-white p-1 transition-colors sm:size-[68px] ${selectedImageIndex === index ? "border-[#0a285a]" : "border-[#e2e5eb] hover:border-[#aac0da]"}`}
               >
@@ -317,9 +301,9 @@ function ProductGallery({ product, selectedImageIndex, onSelectImage, onChangeIm
               </button>
             ))}
             {overflow > 0 ? (
-              <button onClick={onZoom} aria-label={`View all ${product.images.length} images`} className="pressable grid size-[62px] shrink-0 place-items-center rounded-xl border-2 border-[#e2e5eb] bg-[#0a285a] text-white hover:border-[#aac0da] sm:size-[68px]">
+              <button onClick={onZoom} aria-label={t("product.viewAllImages", { count: product.images.length })} className="pressable grid size-[62px] shrink-0 place-items-center rounded-xl border-2 border-[#e2e5eb] bg-[#0a285a] text-white hover:border-[#aac0da] sm:size-[68px]">
                 <span className="text-base font-extrabold leading-none">+{overflow}</span>
-                <span className="text-[9px] font-bold leading-none">View all</span>
+                <span className="text-[9px] font-bold leading-none">{t("home.viewAll")}</span>
               </button>
             ) : null}
           </div>
@@ -340,34 +324,34 @@ function ProductGallery({ product, selectedImageIndex, onSelectImage, onChangeIm
             {lens && image ? (
               <span
                 aria-hidden
-                className="pointer-events-none absolute size-[130px] rounded-lg border-2 border-[#0a285a]/35 bg-[#0a285a]/8"
+                className="pointer-events-none absolute size-[130px] rounded-sg border-2 border-[#0a285a]/35 bg-[#0a285a]/8"
                 style={{ left: `calc(${lens.x * 100}% - 65px)`, top: `calc(${lens.y * 100}% - 65px)` }}
               />
             ) : null}
             {hasMultipleImages ? (
-              <span className="pointer-events-none absolute bottom-3 left-3 rounded-full bg-[#0a285a]/85 px-2.5 py-1 text-[11px] font-bold text-white" aria-live="polite">
-                {selectedImageIndex + 1} / {product.images.length}
+              <span className="pointer-events-none absolute bottom-3 start-3 rounded-full bg-[#0a285a]/85 px-2.5 py-1 text-[11px] font-bold text-white" aria-live="polite">
+                <span dir="ltr">{selectedImageIndex + 1} / {product.images.length}</span>
               </span>
             ) : null}
           </div>
 
-          <div className="absolute right-3 top-3 flex flex-col gap-2">
-            <button onClick={onShare} aria-label={`Share ${product.title}`} className="pressable grid size-10 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.14)] hover:text-[#f2683a]"><Share2 className="size-[18px]" /></button>
-            <button onClick={onToggleSaved} aria-pressed={isSaved} aria-label={isSaved ? `Remove ${product.title} from saved` : `Save ${product.title}`} className="pressable grid size-10 place-items-center rounded-full bg-white shadow-[0_2px_10px_rgba(10,40,90,.14)] hover:text-[#e61c38]"><Heart className={`size-[18px] ${isSaved ? "fill-[#e61c38] text-[#e61c38]" : "text-[#0a285a]"}`} /></button>
-            <button onClick={onZoom} aria-label="Open the full image viewer" className="pressable grid size-10 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.14)] hover:text-[#f2683a]"><ZoomIn className="size-[18px]" /></button>
+          <div className="absolute end-3 top-3 flex flex-col gap-2">
+            <button onClick={onShare} aria-label={t("product.share", { name: product.title })} className="pressable grid size-10 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.14)] hover:text-[#f2683a]"><Share2 className="size-[18px]" /></button>
+            <button onClick={onToggleSaved} aria-pressed={isSaved} aria-label={t(isSaved ? "product.removeSaved" : "product.save", { name: product.title })} className="pressable grid size-10 place-items-center rounded-full bg-white shadow-[0_2px_10px_rgba(10,40,90,.14)] hover:text-[#e61c38]"><Heart className={`size-[18px] ${isSaved ? "fill-[#e61c38] text-[#e61c38]" : "text-[#0a285a]"}`} /></button>
+            <button onClick={onZoom} aria-label={t("product.openViewer")} className="pressable grid size-10 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.14)] hover:text-[#f2683a]"><ZoomIn className="size-[18px]" /></button>
           </div>
 
           {hasMultipleImages ? <>
             {/* Both directions on touch. The rail is the only other way back,
                 and on a phone it is a scrolled strip rather than a full list. */}
-            <button onClick={() => onChangeImage("previous")} aria-label="Show previous product image" className={`${arrow} left-3 sm:hidden`}><ChevronLeft className="size-6" strokeWidth={2.3} /></button>
-            <button onClick={() => onChangeImage("next")} aria-label="Show next product image" className={`${arrow} right-3`}><ChevronRight className="size-6" strokeWidth={2.3} /></button>
+            <button onClick={() => onChangeImage("previous")} aria-label={t("product.prevImage")} className={`${arrow} start-3 sm:hidden`}><ChevronLeft className="size-6 rtl:-scale-x-100" strokeWidth={2.3} /></button>
+            <button onClick={() => onChangeImage("next")} aria-label={t("product.nextImage")} className={`${arrow} end-3`}><ChevronRight className="size-6 rtl:-scale-x-100" strokeWidth={2.3} /></button>
           </> : null}
 
           {lens && image ? (
             <div
               aria-hidden
-              className="pointer-events-none absolute left-[calc(100%+1rem)] top-0 z-30 hidden h-full w-[520px] rounded-[1.25rem] border border-[#e2e5eb] bg-white bg-no-repeat shadow-[0_18px_50px_rgba(10,40,90,.18)] lg:block"
+              className="pointer-events-none absolute start-[calc(100%+1rem)] top-0 z-30 hidden h-full w-[520px] rounded-[1.25rem] border border-[#e2e5eb] bg-white bg-no-repeat shadow-[0_18px_50px_rgba(10,40,90,.18)] lg:block"
               style={{
                 backgroundImage: `url("${image.url}")`,
                 backgroundSize: `${LENS_ZOOM * 100}% ${LENS_ZOOM * 100}%`,
@@ -378,31 +362,34 @@ function ProductGallery({ product, selectedImageIndex, onSelectImage, onChangeIm
         </div>
       </div>
 
-      {hasMultipleImages ? <p className="mt-3 text-[11px] font-semibold text-[#778ba6]">{canHover ? "Hover to magnify. Use the arrows or the left/right keyboard keys to browse images." : "Swipe the image, or tap a thumbnail, to browse."}</p> : null}
+      {hasMultipleImages ? <p className="mt-3 text-[11px] font-semibold text-[#778ba6]">{t(canHover ? "product.galleryHintHover" : "product.galleryHintTouch")}</p> : null}
     </div>
   );
 }
 
 function StarRating({ value, scaleMax, count }: { value: number; scaleMax: number; count: number | null }) {
-  const label = `Rated ${value} out of ${scaleMax}${count === null ? "" : ` from ${count} review${count === 1 ? "" : "s"}`}`;
+  const { t } = useTranslation();
+  const label = count === null
+    ? t("product.ratingAria", { value, max: scaleMax })
+    : t("product.ratingAriaCount", { value, max: scaleMax, count });
   return (
     <div className="mt-3 flex items-center gap-2 text-sm" aria-label={label}>
       <Star className="size-4 fill-[#ffb800] text-[#ffb800]" aria-hidden />
       <strong className="font-extrabold text-[#1f2229]">{value}</strong>
-      {count === null ? null : <span className="text-[#7e859b]">({count} review{count === 1 ? "" : "s"})</span>}
+      {count === null ? null : <span className="text-[#7e859b]">({count === 1 ? t("product.reviewOne") : t("product.reviews", { count })})</span>}
     </div>
   );
 }
 
-function SpecificationsPanel({ product }: { product: Product }) {
+function SpecificationsPanel({ product, t }: { product: Product; t: Translate }) {
   const { rows, text } = specifications(product);
-  if (!rows.length && !text) return <p className="text-sm leading-7 text-[#778ba6]">No specifications have been published for this product yet.</p>;
+  if (!rows.length && !text) return <p className="text-sm leading-7 text-[#778ba6]">{t("product.noSpecs")}</p>;
   return (
     <div className="space-y-3">
       {rows.length ? (
         <dl className="space-y-2.5">
           {rows.map((row) => (
-            <div key={row.label} className="text-sm leading-6">
+            <div key={row.label} dir="auto" className="text-sm leading-6">
               <dt className="inline font-bold text-[#1f2229]">{row.label}: </dt>
               <dd className="inline text-[#404553]">{row.value}</dd>
             </div>
@@ -411,14 +398,14 @@ function SpecificationsPanel({ product }: { product: Product }) {
       ) : null}
       {/* Pre-wrapped: a spec block written into the description keeps one line
           per specification, which is how it reads in the admin. */}
-      {text ? <p className="text-sm leading-7 whitespace-pre-wrap text-[#404553]">{text}</p> : null}
+      {text ? <p dir="auto" className="text-sm leading-7 whitespace-pre-wrap text-[#404553]">{text}</p> : null}
     </div>
   );
 }
 
-function ShippingPolicyPanel({ express }: { express: boolean }) {
+function ShippingPolicyPanel({ express, t }: { express: boolean; t: Translate }) {
   const rows = express
-    ? [{ icon: Zap, title: "NetLet Express", body: "This item qualifies for Express delivery — get it the same day or next day across Kuwait when you order before 4:00 PM." } as const, ...SHIPPING_POLICY]
+    ? [{ icon: Zap, title: "product.expressTitle", body: "shipping.express.body" } as const, ...SHIPPING_POLICY]
     : SHIPPING_POLICY;
   return (
     <div className="flex flex-col gap-4">
@@ -426,8 +413,8 @@ function ShippingPolicyPanel({ express }: { express: boolean }) {
         <div key={row.title} className="flex items-start gap-3.5">
           <span className="grid size-[34px] shrink-0 place-items-center rounded-[10px] border border-[#0a285a]/12 bg-[#0a285a]/8 text-[#0a285a]"><row.icon className="size-4" /></span>
           <div>
-            <strong className="block text-sm font-bold text-[#1f2229]">{row.title}</strong>
-            <span className="text-[13px] leading-[1.55] text-[#404553]">{row.body}</span>
+            <strong className="block text-sm font-bold text-[#1f2229]">{t(row.title)}</strong>
+            <span className="text-[13px] leading-[1.55] text-[#404553]">{t(row.body)}</span>
           </div>
         </div>
       ))}
@@ -443,6 +430,8 @@ export default function ProductDetail() {
   const { data: catalog = [] } = trpc.commerce.products.list.useQuery({ first: 24 });
   const { addItem, openCart, itemCount, loading: cartLoading } = useCart();
   const { savedIds, toggleSaved } = useCustomer();
+  const { direction, t } = useTranslation();
+  const money = useMoney();
   const [selectedVariantId, setSelectedVariantId] = useState("");
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [zoomOpen, setZoomOpen] = useState(false);
@@ -473,11 +462,14 @@ export default function ProductDetail() {
       if (event.altKey || event.ctrlKey || event.metaKey || !canUseGalleryKeyboard(event.target)) return;
       if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
       event.preventDefault();
-      setSelectedImageIndex(current => galleryIndex(current, imageCount, event.key === "ArrowRight" ? "next" : "previous"));
+      // The arrow that means "onward" is the one pointing the way the page
+      // reads, so in Arabic the left arrow advances.
+      const onward = direction === "rtl" ? "ArrowLeft" : "ArrowRight";
+      setSelectedImageIndex(current => galleryIndex(current, imageCount, event.key === onward ? "next" : "previous"));
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [product?.id, product?.images.length]);
+  }, [direction, product?.id, product?.images.length]);
 
   useEffect(() => {
     if (!zoomOpen) return;
@@ -496,9 +488,9 @@ export default function ProductDetail() {
     if (!product || !selectedVariant?.availableForSale) return;
     try {
       await addItem(selectedVariant.id, quantity);
-      toast.success(`${quantity} × ${product.title} added to your cart`);
+      toast.success(t("cart.addedQuantity", { count: quantity, name: product.title }));
     } catch {
-      toast.error("We couldn't add that item just now. Please try again.");
+      toast.error(t("cart.addFailed"));
     }
   };
   // The cart drawer lives on the home route, and `isOpen` is held in the cart
@@ -507,7 +499,7 @@ export default function ProductDetail() {
 
   if (isLoading) return <main className="min-h-screen bg-background px-4 py-8"><div className="mx-auto max-w-6xl animate-pulse"><div className="h-10 w-32 rounded-full bg-[#e7edf5]" /><div className="mt-8 grid gap-8 lg:grid-cols-2"><div className="aspect-square rounded-[1.5rem] bg-[#e7edf5]" /><div className="space-y-5 pt-7"><div className="h-5 w-24 rounded bg-[#dce5e9]" /><div className="h-16 w-4/5 rounded bg-[#dce5e9]" /><div className="h-20 rounded bg-[#e7edf5]" /></div></div></div></main>;
 
-  if (!product || error) return <main className="min-h-screen bg-background px-4 py-16"><div className="mx-auto max-w-lg rounded-[2rem] border border-[#d5dfeb] bg-[#fffdf9] p-9 text-center"><div className="mx-auto grid size-14 place-items-center rounded-2xl bg-[#e7edf5] text-[#0a285a]"><PackageOpen className="size-7" /></div><h1 className="display-face mt-5 text-4xl text-[#0a285a]">Product not found.</h1><p className="mt-3 text-sm leading-6 text-[#536b8c]">This product may be unavailable or no longer published in the live NetLet catalog.</p><Link href="/" className="glass glass-navy pressable mt-7 inline-flex items-center gap-2 rounded-full px-5 py-3 text-xs font-extrabold"><ArrowLeft className="size-4" />Back to NetLet</Link></div></main>;
+  if (!product || error) return <main className="min-h-screen bg-background px-4 py-16"><div className="mx-auto max-w-lg rounded-[2rem] border border-[#d5dfeb] bg-[#fffdf9] p-9 text-center"><div className="mx-auto grid size-14 place-items-center rounded-2xl bg-[#e7edf5] text-[#0a285a]"><PackageOpen className="size-7" /></div><h1 className="display-face mt-5 text-4xl text-[#0a285a]">{t("product.notFound")}</h1><p className="mt-3 text-sm leading-6 text-[#536b8c]">{t("product.notFoundNote")}</p><Link href="/" className="glass glass-navy pressable mt-7 inline-flex items-center gap-2 rounded-full px-5 py-3 text-xs font-extrabold"><ArrowLeft className="size-4 rtl:-scale-x-100" />{t("product.backToNetlet")}</Link></div></main>;
 
   const rating = productRating(product.attributes);
   const express = isExpressEligible(product);
@@ -523,71 +515,71 @@ export default function ProductDetail() {
 
   return (
     <main className="min-h-screen bg-background pb-14 text-[#0a285a]">
-      <header className="sticky top-0 z-40 border-b border-[#d5dfeb] bg-background/95 backdrop-blur-xl"><div className="container flex h-[72px] items-center justify-between"><Link href="/" className="flex items-center"><img src={logoImage} alt="NetLet" className="h-10 w-auto max-w-[130px] object-contain" /></Link><div className="flex items-center gap-2"><Link href="/" className="glass pressable inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-xs font-extrabold"><ArrowLeft className="size-4" />Continue shopping</Link></div></div></header>
+      <header className="sticky top-0 z-40 border-b border-[#d5dfeb] bg-background/95 backdrop-blur-xl"><div className="container flex h-[72px] items-center justify-between"><Link href="/" className="flex items-center"><img src={logoImage} alt="NetLet" className="h-10 w-auto max-w-[130px] object-contain" /></Link><div className="flex items-center gap-2"><Link href="/" className="glass pressable inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-xs font-extrabold"><ArrowLeft className="size-4 rtl:-scale-x-100" />{t("header.continueShopping")}</Link></div></div></header>
 
       <div className="container py-6 sm:py-8">
-        <nav className="text-[13px] text-[#7e859b]" aria-label="Breadcrumb"><Link href="/" className="hover:text-[#0a285a]">Home</Link><span className="mx-2">/</span><span className="text-[#404553]">{product.title}</span></nav>
+        <nav className="text-[13px] text-[#7e859b]" aria-label={t("nav.breadcrumb")}><Link href="/" className="hover:text-[#0a285a]">{t("nav.home")}</Link><span className="mx-2">/</span><span className="text-[#404553]">{product.title}</span></nav>
 
         <section className="mt-5 grid gap-6 lg:grid-cols-2 lg:gap-8">
-          <ProductGallery product={product} selectedImageIndex={selectedImageIndex} onSelectImage={setSelectedImageIndex} onChangeImage={changeImage} onZoom={() => setZoomOpen(true)} onShare={() => void shareProduct(product)} onToggleSaved={() => toggleSaved(product.id)} isSaved={isSaved} />
+          <ProductGallery product={product} selectedImageIndex={selectedImageIndex} onSelectImage={setSelectedImageIndex} onChangeImage={changeImage} onZoom={() => setZoomOpen(true)} onShare={() => void shareProduct(product, t)} onToggleSaved={() => toggleSaved(product.id)} isSaved={isSaved} />
 
           <div className="rounded-[1.5rem] border border-[#d5dfeb] bg-white p-6 shadow-[0_8px_32px_rgba(10,40,90,.05)] sm:p-7">
             {product.vendor ? <p className="text-xs font-bold tracking-[.5px] text-[#7e859b] uppercase">{product.vendor}</p> : null}
-            {selectedVariant?.sku ? <p className="mt-3 text-sm font-medium text-[#7e859b]">SKU: <span className="text-[#9ea4b5]">{selectedVariant.sku}</span></p> : null}
-            {product.productType ? <p className="mt-2 text-sm font-medium text-[#7e859b]">Category: <span className="text-[#9ea4b5]">{product.productType}</span></p> : null}
+            {selectedVariant?.sku ? <p className="mt-3 text-sm font-medium text-[#7e859b]">{t("product.sku")}: <span dir="ltr" className="text-[#9ea4b5]">{selectedVariant.sku}</span></p> : null}
+            {product.productType ? <p className="mt-2 text-sm font-medium text-[#7e859b]">{t("product.category")}: <span className="text-[#9ea4b5]">{product.productType}</span></p> : null}
 
             <h1 className="mt-2 text-[26px] leading-[1.3] font-extrabold tracking-[-.02em] text-[#1f2229]">{product.title}</h1>
 
             {rating ? <StarRating value={rating.value} scaleMax={rating.scaleMax} count={rating.count} /> : null}
 
-            {express ? <p className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-[#f2683a] px-3 py-1 text-xs font-bold text-white"><Zap className="size-3.5 fill-current" />NetLet Express</p> : null}
+            {express ? <p className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-[#f2683a] px-3 py-1 text-xs font-bold text-white"><Zap className="size-3.5 fill-current" />{t("product.expressTitle")}</p> : null}
 
             <div className="mt-5 flex flex-wrap items-baseline gap-3">
-              <span className="text-[32px] font-extrabold tracking-[-.04em] text-[#1f2229]">{formatMoney(price)}</span>
-              {compareAtPrice ? <span className="text-lg text-[#9ea4b5] line-through">{formatMoney(compareAtPrice)}</span> : null}
-              {savings > 0 ? <span className="rounded-lg bg-[#d4edda] px-2.5 py-1 text-xs font-bold text-[#155724]">Save {savings}%</span> : null}
+              <span className="text-[32px] font-extrabold tracking-[-.04em] text-[#1f2229]">{money(price)}</span>
+              {compareAtPrice ? <span className="text-lg text-[#9ea4b5] line-through">{money(compareAtPrice)}</span> : null}
+              {savings > 0 ? <span className="rounded-sg bg-[#d4edda] px-2.5 py-1 text-xs font-bold text-[#155724]">{t("product.savePercent", { percent: savings })}</span> : null}
             </div>
 
             <hr className="my-6 border-[#0a285a]/8" />
 
             <div className="flex flex-wrap items-center justify-between gap-3">
               {inStock
-                ? <p className="flex items-center gap-2 text-sm font-semibold text-[#28a745]"><CheckCircle2 className="size-[18px]" />In Stock</p>
-                : <p className="flex items-center gap-2 text-sm font-semibold text-[#e61c38]"><CircleAlert className="size-[18px]" />Out of Stock</p>}
-              <div role="tablist" aria-label="Product information" className="inline-flex gap-1 rounded-xl border border-[#0a285a]/8 bg-white/50 p-1 shadow-[inset_0_1px_1px_rgba(255,255,255,.7)] max-sm:w-full">
-                <button role="tab" id="tab-specifications" aria-selected={tab === "specifications"} aria-controls="panel-specifications" onClick={() => setTab("specifications")} className={`${tabClass(tab === "specifications")} max-sm:flex-1 max-sm:justify-center`}><ListTree className="size-3.5" />Specifications</button>
-                <button role="tab" id="tab-shipping" aria-selected={tab === "shipping"} aria-controls="panel-shipping" onClick={() => setTab("shipping")} className={`${tabClass(tab === "shipping")} max-sm:flex-1 max-sm:justify-center`}><Truck className="size-3.5" />Shipping Policy</button>
+                ? <p className="flex items-center gap-2 text-sm font-semibold text-[#28a745]"><CheckCircle2 className="size-[18px]" />{t("product.inStock")}</p>
+                : <p className="flex items-center gap-2 text-sm font-semibold text-[#e61c38]"><CircleAlert className="size-[18px]" />{t("product.outOfStock")}</p>}
+              <div role="tablist" aria-label={t("product.information")} className="inline-flex gap-1 rounded-xl border border-[#0a285a]/8 bg-white/50 p-1 shadow-[inset_0_1px_1px_rgba(255,255,255,.7)] max-sm:w-full">
+                <button role="tab" id="tab-specifications" aria-selected={tab === "specifications"} aria-controls="panel-specifications" onClick={() => setTab("specifications")} className={`${tabClass(tab === "specifications")} max-sm:flex-1 max-sm:justify-center`}><ListTree className="size-3.5" />{t("product.specifications")}</button>
+                <button role="tab" id="tab-shipping" aria-selected={tab === "shipping"} aria-controls="panel-shipping" onClick={() => setTab("shipping")} className={`${tabClass(tab === "shipping")} max-sm:flex-1 max-sm:justify-center`}><Truck className="size-3.5" />{t("product.shippingPolicy")}</button>
               </div>
             </div>
 
             <div className="mt-5 min-h-[120px]">
-              <div role="tabpanel" id="panel-specifications" aria-labelledby="tab-specifications" hidden={tab !== "specifications"}><SpecificationsPanel product={product} /></div>
-              <div role="tabpanel" id="panel-shipping" aria-labelledby="tab-shipping" hidden={tab !== "shipping"}><ShippingPolicyPanel express={express} /></div>
+              <div role="tabpanel" id="panel-specifications" aria-labelledby="tab-specifications" hidden={tab !== "specifications"}><SpecificationsPanel product={product} t={t} /></div>
+              <div role="tabpanel" id="panel-shipping" aria-labelledby="tab-shipping" hidden={tab !== "shipping"}><ShippingPolicyPanel express={express} t={t} /></div>
             </div>
 
-            {product.variants.length > 1 ? <label className="mt-6 block text-xs font-extrabold text-[#0a285a]">Choose an option<select value={selectedVariantId} onChange={event => setSelectedVariantId(event.target.value)} className="mt-2 block w-full rounded-xl border border-[#d5dfeb] bg-white px-3 py-3 text-sm font-semibold text-[#0a285a] outline-none focus:border-[#f2683a]">{product.variants.map(variant => <option key={variant.id} value={variant.id} disabled={!variant.availableForSale}>{variant.title} — {formatMoney(variant.price)}{variant.availableForSale ? "" : " (Unavailable)"}</option>)}</select></label> : null}
+            {product.variants.length > 1 ? <label className="mt-6 block text-xs font-extrabold text-[#0a285a]">{t("product.chooseOption")}<select value={selectedVariantId} onChange={event => setSelectedVariantId(event.target.value)} className="mt-2 block w-full rounded-xl border border-[#d5dfeb] bg-white px-3 py-3 text-sm font-semibold text-[#0a285a] outline-none focus:border-[#f2683a]">{product.variants.map(variant => <option key={variant.id} value={variant.id} disabled={!variant.availableForSale}>{variant.title} — {money(variant.price)}{variant.availableForSale ? "" : t("product.variantUnavailable")}</option>)}</select></label> : null}
 
             <div className="mt-6 flex items-center gap-3">
-              <span className="text-sm font-semibold text-[#7e859b]">Quantity:</span>
+              <span className="text-sm font-semibold text-[#7e859b]">{t("product.quantity")}:</span>
               <div className="glass inline-flex items-center overflow-hidden rounded-[10px]">
-                <button onClick={() => setQuantity(current => Math.max(1, current - 1))} disabled={quantity <= 1} aria-label="Decrease quantity" className="grid size-9 place-items-center text-[#0a285a] disabled:opacity-40"><Minus className="size-4" /></button>
+                <button onClick={() => setQuantity(current => Math.max(1, current - 1))} disabled={quantity <= 1} aria-label={t("product.decreaseQuantity")} className="grid size-9 place-items-center text-[#0a285a] disabled:opacity-40"><Minus className="size-4" /></button>
                 <span aria-live="polite" className="min-w-9 text-center text-[15px] font-bold text-[#1f2229]">{quantity}</span>
-                <button onClick={() => setQuantity(current => Math.min(99, current + 1))} disabled={quantity >= 99} aria-label="Increase quantity" className="grid size-9 place-items-center text-[#0a285a] disabled:opacity-40"><Plus className="size-4" /></button>
+                <button onClick={() => setQuantity(current => Math.min(99, current + 1))} disabled={quantity >= 99} aria-label={t("product.increaseQuantity")} className="grid size-9 place-items-center text-[#0a285a] disabled:opacity-40"><Plus className="size-4" /></button>
               </div>
             </div>
 
             <div className="mt-6 flex gap-3">
-              <button onClick={() => void addToCart()} disabled={!inStock || cartLoading} className="glass glass-navy pressable flex flex-1 items-center justify-center gap-2 rounded-[14px] px-5 py-4 text-[15px] font-bold tracking-[.02em] uppercase disabled:cursor-not-allowed disabled:opacity-50">{cartLoading ? <LoaderCircle className="size-[18px] animate-spin" /> : <ShoppingBag className="size-[18px]" />}{inStock ? "Add to cart" : "Unavailable"}</button>
-              <button onClick={() => toggleSaved(product.id)} aria-label={isSaved ? `Remove ${product.title} from saved` : `Save ${product.title}`} aria-pressed={isSaved} className="glass pressable grid w-14 place-items-center rounded-[14px] text-[#e61c38]"><Heart className={`size-5 ${isSaved ? "fill-current" : ""}`} /></button>
+              <button onClick={() => void addToCart()} disabled={!inStock || cartLoading} className="glass glass-navy pressable flex flex-1 items-center justify-center gap-2 rounded-[14px] px-5 py-4 text-[15px] font-bold tracking-[.02em] uppercase disabled:cursor-not-allowed disabled:opacity-50">{cartLoading ? <LoaderCircle className="size-[18px] animate-spin" /> : <ShoppingBag className="size-[18px]" />}{t(inStock ? "product.addToCart" : "product.unavailable")}</button>
+              <button onClick={() => toggleSaved(product.id)} aria-label={t(isSaved ? "product.removeSaved" : "product.save", { name: product.title })} aria-pressed={isSaved} className="glass pressable grid w-14 place-items-center rounded-[14px] text-[#e61c38]"><Heart className={`size-5 ${isSaved ? "fill-current" : ""}`} /></button>
             </div>
 
-            <button onClick={viewCart} className="pressable mt-3 flex w-full items-center justify-center gap-2 rounded-[14px] border-[1.5px] border-[#0a285a] bg-white/50 px-5 py-3.5 text-[15px] font-bold text-[#0a285a] transition-colors hover:bg-[#0a285a] hover:text-white"><ShoppingBasket className="size-[18px]" />View Cart{itemCount ? ` (${itemCount})` : ""}</button>
+            <button onClick={viewCart} className="pressable mt-3 flex w-full items-center justify-center gap-2 rounded-[14px] border-[1.5px] border-[#0a285a] bg-white/50 px-5 py-3.5 text-[15px] font-bold text-[#0a285a] transition-colors hover:bg-[#0a285a] hover:text-white"><ShoppingBasket className="size-[18px]" />{itemCount ? t("product.viewCartCount", { count: itemCount }) : t("product.viewCart")}</button>
 
-            {express ? <p className="mt-4 flex items-center justify-center gap-1.5 text-[11px] font-semibold text-[#778ba6]"><BadgeCheck className="size-3.5" />Same-day or next-day delivery across Kuwait on orders before 4:00 PM.</p> : null}
+            {express ? <p className="mt-4 flex items-center justify-center gap-1.5 text-[11px] font-semibold text-[#778ba6]"><BadgeCheck className="size-3.5" />{t("product.expressNote")}</p> : null}
           </div>
         </section>
 
-        <section className="mt-14 border-t border-[#d5dfeb] pt-10"><div className="flex items-end justify-between gap-5"><div><p className="text-[10px] font-extrabold tracking-[.15em] text-[#a44a2b] uppercase">Keep discovering</p><h2 className="display-face mt-2 text-3xl text-[#0a285a] sm:text-4xl">Related products</h2><p className="mt-2 text-sm text-[#536b8c]">Live items selected from the same type, tags, or maker when available.</p></div><Link href="/" className="hidden items-center gap-1 text-xs font-extrabold text-[#0a285a] underline decoration-[#f2683a] decoration-2 underline-offset-4 sm:flex">View all <ArrowRight className="size-3.5" /></Link></div>{related.length ? <div className="hide-scrollbar mt-6 flex gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:overflow-visible">{related.map(item => <RelatedCard key={item.id} product={item} />)}</div> : <div className="mt-6 rounded-2xl border border-dashed border-[#b8c9dc] bg-white/60 px-6 py-10 text-center"><p className="text-sm font-bold text-[#0a285a]">More related finds will appear as the live catalog grows.</p><Link href="/" className="mt-3 inline-block text-xs font-extrabold text-[#f2683a] underline underline-offset-4">Browse the catalog</Link></div>}</section>
+        <section className="mt-14 border-t border-[#d5dfeb] pt-10"><div className="flex items-end justify-between gap-5"><div><p className="text-[10px] font-extrabold tracking-[.15em] text-[#a44a2b] uppercase">{t("product.keepDiscovering")}</p><h2 className="display-face mt-2 text-3xl text-[#0a285a] sm:text-4xl">{t("product.relatedTitle")}</h2><p className="mt-2 text-sm text-[#536b8c]">{t("product.relatedNote")}</p></div><Link href="/" className="hidden items-center gap-1 text-xs font-extrabold text-[#0a285a] underline decoration-[#f2683a] decoration-2 underline-offset-4 sm:flex">{t("home.viewAll")} <ArrowRight className="size-3.5 rtl:-scale-x-100" /></Link></div>{related.length ? <div className="hide-scrollbar mt-6 flex gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:overflow-visible">{related.map(item => <RelatedCard key={item.id} product={item} />)}</div> : <div className="mt-6 rounded-2xl border border-dashed border-[#b8c9dc] bg-white/60 px-6 py-10 text-center"><p className="text-sm font-bold text-[#0a285a]">{t("product.relatedEmpty")}</p><Link href="/" className="mt-3 inline-block text-xs font-extrabold text-[#f2683a] underline underline-offset-4">{t("product.browseCatalog")}</Link></div>}</section>
       </div>
       {zoomOpen ? <ImageLightbox product={product} selectedImageIndex={selectedImageIndex} onClose={() => setZoomOpen(false)} onSelectImage={setSelectedImageIndex} onChangeImage={changeImage} /> : null}
     </main>

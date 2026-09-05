@@ -58,7 +58,7 @@ export default function Category() {
   const { t } = useTranslation();
   const { savedIds, toggleSaved } = useCustomer();
   const { addItem, loading: cartLoading } = useCart();
-  const { data: catalog = [], isLoading } = trpc.commerce.products.list.useQuery({ first: 100 });
+  const { data: catalog = [], isLoading, error, refetch } = trpc.commerce.products.list.useQuery({ first: 100 });
 
   const [search, setSearch] = useState("");
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -236,7 +236,7 @@ export default function Category() {
           <section aria-label={t("browse.resultsRegion")}>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h1 className="text-[15px] font-extrabold text-[#0a285a]" aria-live="polite">
-                {isLoading ? " " : results.length === 0
+                {isLoading || error ? " " : results.length === 0
                   ? t("browse.resultsNone", { name: title })
                   : results.length === 1
                     ? t("browse.resultOne", { name: title })
@@ -281,6 +281,15 @@ export default function Category() {
                 {Array.from({ length: 8 }, (_, index) => (
                   <div key={index} className="h-[380px] animate-pulse rounded-2xl border border-[#d5dfeb] bg-white/60" />
                 ))}
+              </div>
+            ) : error ? (
+              <div className="mt-6 rounded-2xl border border-[#f2b69e] bg-white px-6 py-14 text-center">
+                <PackageOpen className="mx-auto size-7 text-[#f2683a]" aria-hidden />
+                <h2 className="mt-3 text-lg font-extrabold text-[#0a285a]">{t("home.catalogSlow")}</h2>
+                <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-[#536b8c]">{t("home.refreshNote")}</p>
+                <button onClick={() => void refetch()} className="glass glass-navy pressable mt-5 rounded-full px-5 py-3 text-xs font-extrabold">
+                  {t("home.refreshCatalog")}
+                </button>
               </div>
             ) : results.length ? (
               <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">

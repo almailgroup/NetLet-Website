@@ -46,7 +46,9 @@ import {
   Zap,
 } from "lucide-react";
 import { useCompactHeader } from "@/hooks/useCompactHeader";
+import { useOverlay } from "@/lib/useOverlay";
 import { ProductCard } from "@/components/ProductCard";
+import { MobileTabBar } from "@/components/MobileTabBar";
 import { useLocation } from "wouter";
 import { appPath } from "@/lib/basePath";
 import { SITE_URL, usePageMeta } from "@/lib/usePageMeta";
@@ -122,6 +124,7 @@ function AppDownloadAction({ t }: { t: Translate }) {
 function DeliveryZoneDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { deliveryZoneId, setDeliveryZoneId } = useCustomer();
   const { isArabic, t } = useTranslation();
+  useOverlay(open, onClose);
   if (!open) return null;
   return <div className="fixed inset-0 z-[75] flex items-end bg-[#061b3b]/35 p-3 backdrop-blur-[2px] sm:items-center sm:justify-center" onClick={onClose}>
     <section role="dialog" aria-modal="true" aria-labelledby="delivery-zone-title" className="w-full max-w-lg rounded-[1.5rem] bg-background p-5 shadow-2xl sm:p-7" onClick={event => event.stopPropagation()}>
@@ -143,14 +146,6 @@ function CatalogSkeleton({ dark = false }: { dark?: boolean }) {
  * mid-transition half the time, which reads as a blur rather than as a product
  * turning. The hold is the settled time plus the fade.
  */
-
-function BagDrawer() {
-  const { cart, isOpen, closeCart, loading, updateQuantity, removeItem } = useCart();
-  const { t } = useTranslation();
-  const money = useMoney();
-  if (!isOpen) return null;
-  return <div className="fixed inset-0 z-[70] bg-[#061b3b]/35 backdrop-blur-[2px]" onClick={closeCart}><aside role="dialog" aria-modal="true" aria-label={t("cart.title")} className="type-body ms-auto flex h-full w-full max-w-md flex-col bg-background shadow-2xl" onClick={(event) => event.stopPropagation()}><div className="flex items-center justify-between border-b border-[#d5dfeb] px-6 py-5"><div><p className="text-[10px] font-extrabold tracking-[.14em] text-[#f2683a] uppercase">{t("cart.title")}</p><h2 className="display-face mt-1 text-3xl text-[#0a285a]">{t("cart.heading")}</h2></div><IconButton label={t("cart.close")} onClick={closeCart}><X className="size-5" /></IconButton></div>{!cart?.items.length ? <div className="flex flex-1 flex-col items-center justify-center px-8 text-center"><div className="grid size-16 place-items-center rounded-full bg-[#e7edf5] text-[#0a285a]"><ShoppingBag className="size-7" /></div><h3 className="mt-5 text-lg font-extrabold text-[#0a285a]">{t("cart.empty")}</h3><p className="mt-2 text-sm leading-6 text-[#536b8c]">{t("cart.emptyNote")}</p><button onClick={closeCart} className="glass glass-navy pressable mt-6 rounded-full px-5 py-3 text-xs font-extrabold">{t("cart.keepBrowsing")}</button></div> : <><div className="hide-scrollbar flex-1 space-y-4 overflow-y-auto px-6 py-5">{cart.items.map((item) => <div key={item.lineId} className="flex gap-3 border-b border-[#d5dfeb] pb-4"><div className="size-20 shrink-0 overflow-hidden rounded-xl bg-[#e7edf5]">{item.image ? <img src={item.image.url} alt={item.image.altText ?? item.productTitle} className="size-full object-cover" /> : <div className="grid size-full place-items-center"><ShoppingBag className="size-5 text-[#536b8c]" /></div>}</div><div className="min-w-0 flex-1"><div className="flex justify-between gap-2"><div><p className="text-sm font-extrabold text-[#0a285a]">{item.productTitle}</p>{item.variantTitle !== "Default Title" && <p className="mt-0.5 text-[11px] text-[#536b8c]">{item.variantTitle}</p>}</div><button onClick={() => removeItem(item.lineId)} disabled={loading} aria-label={t("cart.remove", { name: item.productTitle })} className="text-[#778ba6] hover:text-[#f2683a]"><Trash2 className="size-4" /></button></div><div className="mt-3 flex items-center justify-between"><div className="glass inline-flex items-center rounded-full"><button disabled={loading} onClick={() => updateQuantity(item.lineId, item.quantity - 1)} className="grid size-7 place-items-center text-[#0a285a] disabled:opacity-40"><Minus className="size-3" /></button><span className="min-w-7 text-center text-xs font-extrabold text-[#0a285a]">{item.quantity}</span><button disabled={loading} onClick={() => updateQuantity(item.lineId, item.quantity + 1)} className="grid size-7 place-items-center text-[#0a285a] disabled:opacity-40"><Plus className="size-3" /></button></div><p className="text-sm font-extrabold text-[#0a285a]">{money(item.lineTotal)}</p></div></div></div>)}</div><div className="border-t border-[#d5dfeb] bg-white/70 px-6 py-5"><div className="flex items-center justify-between text-sm"><span className="font-semibold text-[#536b8c]">{t("cart.subtotal")}</span><span className="text-lg font-extrabold text-[#0a285a]">{money(cart.subtotal)}</span></div><p className="mt-2 text-[11px] leading-5 text-[#778ba6]">{t("cart.checkoutNote")}</p><button onClick={() => { closeCart(); window.location.assign(appPath("/checkout")); }} disabled={loading} className="glass glass-accent pressable mt-4 flex w-full items-center justify-center gap-2 rounded-full px-5 py-4 text-xs font-extrabold disabled:opacity-60">{t("cart.checkout")} <ArrowRight className="size-4 rtl:-scale-x-100" /></button></div></>}</aside></div>;
-}
 
 type RailSupportCard = { eyebrow: MessageKey; title: MessageKey; image: string; category: string };
 
@@ -279,6 +274,7 @@ export default function Home() {
   const [deliveryOpen, setDeliveryOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const { compact: headerCompact, handlers: headerHandlers } = useCompactHeader();
+  useOverlay(menuOpen, () => setMenuOpen(false));
   const [, navigate] = useLocation();
   usePageMeta(homeMeta(SITE_URL));
   const { isArabic, t } = useTranslation();
@@ -394,7 +390,7 @@ export default function Home() {
       </div></nav>
     </header>
 
-    {menuOpen && <div className="netlet-menu-scrim fixed inset-0 z-50 bg-[#061b3b]/30 backdrop-blur-sm lg:hidden" onClick={() => setMenuOpen(false)}><aside className="netlet-menu-panel h-full w-[82%] max-w-sm bg-[#f3f2ed] px-5 py-7 shadow-2xl" onClick={(event) => event.stopPropagation()}><div className="flex items-center justify-between"><Logo t={t} /><IconButton label={t("header.closeMenu")} onClick={() => setMenuOpen(false)}><X /></IconButton></div><div className="mt-10 space-y-1">{categoryRail.map((category) => <button key={category.query} onClick={() => { selectCategory(category.query); setMenuOpen(false); }} className="glass pressable mb-1 block w-full rounded-xl px-4 py-4 text-start text-sm font-bold">{t(category.key)}</button>)}</div><button onClick={accountAction} className="glass glass-navy pressable mt-7 flex w-full items-center justify-center gap-2 rounded-2xl p-4 text-sm font-bold">{isAuthenticated ? <LogOut className="size-4" /> : <UserRound className="size-4" />}{isAuthenticated ? (user?.name ? t("header.signOutName", { name: user.name }) : t("header.signOut")) : t("header.signInToNetlet")}</button></aside></div>}
+    {menuOpen && <div className="netlet-menu-scrim fixed inset-0 z-50 bg-[#061b3b]/30 backdrop-blur-sm lg:hidden" onClick={() => setMenuOpen(false)}><aside role="dialog" aria-modal="true" aria-label={t("nav.allDepartments")} className="netlet-menu-panel h-full w-[82%] max-w-sm bg-[#f3f2ed] px-5 py-7 shadow-2xl" onClick={(event) => event.stopPropagation()}><div className="flex items-center justify-between"><Logo t={t} /><IconButton label={t("header.closeMenu")} onClick={() => setMenuOpen(false)}><X /></IconButton></div><div className="mt-10 space-y-1">{categoryRail.map((category) => <button key={category.query} onClick={() => { selectCategory(category.query); setMenuOpen(false); }} className="glass pressable mb-1 block w-full rounded-xl px-4 py-4 text-start text-sm font-bold">{t(category.key)}</button>)}</div><button onClick={accountAction} className="glass glass-navy pressable mt-7 flex w-full items-center justify-center gap-2 rounded-2xl p-4 text-sm font-bold">{isAuthenticated ? <LogOut className="size-4" /> : <UserRound className="size-4" />}{isAuthenticated ? (user?.name ? t("header.signOutName", { name: user.name }) : t("header.signOut")) : t("header.signInToNetlet")}</button></aside></div>}
 
     {/* Hero, at roughly half its previous height so the first row of products
         is on screen when the page opens. The panel carries the colour now that
@@ -418,8 +414,7 @@ export default function Home() {
 
     <footer className="bg-[#0a285a] pb-24 pt-12 text-white lg:pb-7"><div className="container grid gap-9 sm:grid-cols-2 lg:grid-cols-[1.5fr_repeat(4,1fr)]"><div><FooterLogo t={t} /><p className="mt-4 max-w-xs text-sm leading-6 text-[#b9cce5]">{t("home.footerNote")}</p><button onClick={toggleLocale} className="glass glass-on-dark pressable mt-6 rounded-full px-3 py-2 text-[10px] font-extrabold tracking-[.08em] uppercase">{t("header.language")}</button></div>{footerGroups.map((group) => <div key={group.title}><p className="text-xs font-extrabold text-white">{t(group.title)}</p>{group.links.map((link) => <button key={link.key} onClick={() => followFooterLink(link)} className="mt-3 block text-start text-xs font-medium text-[#b9cce5] hover:text-[#ffcc64]">{t(link.key)}</button>)}</div>)}</div><div className="container mt-10 flex flex-col gap-3 border-t border-[#49658d] pt-5 text-[10px] font-semibold text-[#b9cce5] sm:flex-row sm:items-center sm:justify-between"><span>{t("home.copyright", { year: new Date().getFullYear() })}</span><span>{t("home.legal")}</span></div></footer>
 
-    <nav className="fixed inset-x-3 bottom-3 z-30 flex items-center justify-around rounded-2xl border border-[#ece7da] bg-[#fffdf7] px-2 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-6px_28px_rgba(10,40,90,.10)] lg:hidden" aria-label={t("nav.mobile")}><button onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} className="pressable grid place-items-center gap-0.5 p-1.5 text-[10px] font-bold text-[#0a285a]"><Store className="size-5" />{t("nav.home")}</button><button onClick={() => setMenuOpen(true)} className="pressable grid place-items-center gap-0.5 p-1.5 text-[10px] font-bold text-[#536b8c]"><Menu className="size-5" />{t("nav.browse")}</button><button onClick={() => navigate("/saved")} className="pressable relative grid place-items-center gap-0.5 p-1.5 text-[10px] font-bold text-[#536b8c]"><Heart className="size-5" />{t("nav.saved")}{saved.length ? <span className="absolute -end-1 -top-1 grid size-4 place-items-center rounded-full bg-[#f2683a] text-[8px] text-white">{saved.length}</span> : null}</button><button onClick={() => window.location.assign(appPath("/account"))} className="pressable grid place-items-center gap-0.5 p-1.5 text-[10px] font-bold text-[#536b8c]"><UserRound className="size-5" />{t("nav.account")}</button><button onClick={openCart} className="pressable relative grid place-items-center gap-0.5 p-1.5 text-[10px] font-bold text-[#536b8c]"><ShoppingBag className="size-5" />{t("nav.cart")}<span className="absolute -end-1 -top-1 grid size-4 place-items-center rounded-full bg-[#f2683a] text-[8px] text-white">{itemCount}</span></button></nav>
+    <MobileTabBar onBrowse={() => setMenuOpen(true)} />
     <DeliveryZoneDialog open={deliveryOpen} onClose={() => setDeliveryOpen(false)} />
-    <BagDrawer />
   </main>;
 }

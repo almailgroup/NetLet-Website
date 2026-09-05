@@ -10,6 +10,8 @@
  * once signed in — so the list survives a reload either way.
  */
 import { ProductCard } from "@/components/ProductCard";
+import { StoreHeader } from "@/components/StoreHeader";
+import { MobileTabBar } from "@/components/MobileTabBar";
 import { useCart } from "@/contexts/CartContext";
 import { useCustomer } from "@/contexts/CustomerContext";
 import { appPath } from "@/lib/basePath";
@@ -20,7 +22,7 @@ import { useTranslation } from "@/lib/useTranslation";
 import { privatePageMeta } from "@shared/seo";
 import type { Product } from "@shared/commerce/types";
 import { ArrowLeft, ArrowRight, Heart, LoaderCircle } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
 
@@ -29,6 +31,7 @@ export default function Saved() {
   const [, navigate] = useLocation();
   const { savedIds, toggleSaved } = useCustomer();
   const { t } = useTranslation();
+  const [search, setSearch] = useState("");
   const { addItem, loading: cartLoading } = useCart();
   const { data: catalog = [], isLoading } = trpc.commerce.products.list.useQuery({ first: 60 });
 
@@ -70,19 +73,10 @@ export default function Saved() {
   };
 
   return (
-    <main className="min-h-screen bg-background pb-16 text-[#0a285a]">
-      <header className="sticky top-0 z-40 border-b border-[#d5dfeb] bg-background/95 backdrop-blur-xl">
-        <div className="container flex h-[72px] items-center justify-between">
-          <Link href="/" className="flex items-center" aria-label={t("header.home")}>
-            <img src={logoImage} alt="NetLet" className="h-10 w-auto max-w-[130px] object-contain" />
-          </Link>
-          <Link href="/" className="glass pressable inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-xs font-extrabold">
-            <ArrowLeft className="size-4 rtl:-scale-x-100" />{t("header.continueShopping")}
-          </Link>
-        </div>
-      </header>
+    <main className="min-h-screen bg-background pb-28 text-[#0a285a] lg:pb-16">
+      <StoreHeader catalog={catalog} search={search} onSearch={setSearch} onSelectProduct={openProduct} />
 
-      <div className="container py-8 sm:py-10">
+      <div id="main" className="container py-8 sm:py-10">
         <p className="text-[10px] font-extrabold tracking-[.15em] text-[#a44a2b] uppercase">{t("saved.eyebrow")}</p>
         <h1 className="display-face mt-2 text-4xl text-[#0a285a] sm:text-5xl">{t("saved.title")}</h1>
         <p className="mt-3 max-w-xl text-sm leading-6 text-[#536b8c]">
@@ -146,6 +140,7 @@ export default function Saved() {
           </p>
         ) : null}
       </div>
+      <MobileTabBar />
     </main>
   );
 }

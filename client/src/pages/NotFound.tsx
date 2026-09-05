@@ -6,14 +6,15 @@
  * leave. It now looks like NetLet and, more usefully, offers a way onward:
  * a mistyped or dead product link is a dead end otherwise.
  */
-import { logoImage } from "@/lib/brandAssets";
+import { StoreHeader } from "@/components/StoreHeader";
+import { MobileTabBar } from "@/components/MobileTabBar";
 import { trpc } from "@/lib/trpc";
 import { usePageMeta } from "@/lib/usePageMeta";
 import { useMoney, useTranslation } from "@/lib/useTranslation";
 import { appPath } from "@/lib/basePath";
 import { privatePageMeta } from "@shared/seo";
 import { ArrowRight, Compass, Search } from "lucide-react";
-import { Link, useLocation } from "wouter";
+import { useLocation } from "wouter";
 
 export default function NotFound() {
   usePageMeta(privatePageMeta("Page not found"));
@@ -26,16 +27,10 @@ export default function NotFound() {
   const suggestions = catalog.slice(0, 4);
 
   return (
-    <main className="min-h-screen bg-background text-[#0a285a]">
-      <header className="border-b border-[#d5dfeb] bg-background/95">
-        <div className="container flex h-[72px] items-center">
-          <Link href="/" className="flex items-center" aria-label={t("header.home")}>
-            <img src={logoImage} alt="NetLet" className="h-10 w-auto max-w-[130px] object-contain" />
-          </Link>
-        </div>
-      </header>
+    <main className="min-h-screen bg-background pb-28 text-[#0a285a] lg:pb-0">
+      <StoreHeader />
 
-      <div className="container py-14 sm:py-20">
+      <div id="main" className="container py-14 sm:py-20">
         <div className="mx-auto max-w-2xl text-center">
           <span className="inline-grid size-14 place-items-center rounded-2xl bg-[#e7edf5] text-[#f2683a]">
             <Compass className="size-7" />
@@ -88,6 +83,7 @@ export default function NotFound() {
           </section>
         ) : null}
       </div>
+      <MobileTabBar />
     </main>
   );
 }

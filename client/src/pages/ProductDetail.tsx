@@ -13,6 +13,8 @@ import {
   specifications,
 } from "@shared/commerce/productDetail";
 import { relatedProducts } from "@shared/commerce/related";
+import { categorySlug } from "@shared/commerce/browse";
+import { categoryMessageKey } from "@/content/homeLayout";
 import type { Product } from "@shared/commerce/types";
 import {
   ArrowLeft,
@@ -47,6 +49,8 @@ import { Link, useLocation, useRoute } from "wouter";
 import { toast } from "sonner";
 import { useMoney, useTranslation, type Translate } from "@/lib/useTranslation";
 import { shareProduct } from "@/components/ProductCard";
+import { StoreHeader } from "@/components/StoreHeader";
+import { MobileTabBar } from "@/components/MobileTabBar";
 import type { MessageKey } from "@shared/i18n/dictionary";
 
 /**
@@ -437,6 +441,8 @@ export default function ProductDetail() {
   const [zoomOpen, setZoomOpen] = useState(false);
   const [tab, setTab] = useState<"specifications" | "shipping">("specifications");
   const [quantity, setQuantity] = useState(1);
+  const [search, setSearch] = useState("");
+  const openRelated = (item: Product) => window.location.assign(appPath(`/products/${encodeURIComponent(item.handle)}`));
 
   // Built before the loading and error returns below, because a hook cannot be
   // called conditionally. While the product is in flight the page describes
@@ -514,13 +520,23 @@ export default function ProductDetail() {
   const tabClass = (active: boolean) => `pressable inline-flex items-center gap-1.5 rounded-[9px] px-3.5 py-2 text-[13px] font-bold whitespace-nowrap transition-colors ${active ? "glass glass-navy hover:!bg-[#0a285a]" : "text-[#7e859b] hover:text-[#0a285a]"}`;
 
   return (
-    <main className="min-h-screen bg-background pb-14 text-[#0a285a]">
-      <header className="sticky top-0 z-40 border-b border-[#d5dfeb] bg-background/95 backdrop-blur-xl"><div className="container flex h-[72px] items-center justify-between"><Link href="/" className="flex items-center"><img src={logoImage} alt="NetLet" className="h-10 w-auto max-w-[130px] object-contain" /></Link><div className="flex items-center gap-2"><Link href="/" className="glass pressable inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-xs font-extrabold"><ArrowLeft className="size-4 rtl:-scale-x-100" />{t("header.continueShopping")}</Link></div></div></header>
+    <main className="min-h-screen bg-background pb-28 text-[#0a285a] lg:pb-14">
+      <StoreHeader catalog={catalog} search={search} onSearch={setSearch} onSelectProduct={openRelated} />
 
       <div className="container py-6 sm:py-8">
-        <nav className="text-[13px] text-[#7e859b]" aria-label={t("nav.breadcrumb")}><Link href="/" className="hover:text-[#0a285a]">{t("nav.home")}</Link><span className="mx-2">/</span><span className="text-[#404553]">{product.title}</span></nav>
+        <nav className="flex flex-wrap items-center gap-x-2 text-[13px] text-[#7e859b]" aria-label={t("nav.breadcrumb")}>
+          <Link href="/" className="py-1.5 hover:text-[#0a285a]">{t("nav.home")}</Link>
+          {product.productType ? <>
+            <span aria-hidden>/</span>
+            <Link href={`/category/${categorySlug(product.productType)}`} className="py-1.5 hover:text-[#0a285a]">
+              {categoryMessageKey(product.productType) ? t(categoryMessageKey(product.productType)!) : product.productType}
+            </Link>
+          </> : null}
+          <span aria-hidden>/</span>
+          <span className="text-[#404553]">{product.title}</span>
+        </nav>
 
-        <section className="mt-5 grid gap-6 lg:grid-cols-2 lg:gap-8">
+        <section id="main" className="mt-5 grid gap-6 lg:grid-cols-2 lg:gap-8">
           <ProductGallery product={product} selectedImageIndex={selectedImageIndex} onSelectImage={setSelectedImageIndex} onChangeImage={changeImage} onZoom={() => setZoomOpen(true)} onShare={() => void shareProduct(product, t)} onToggleSaved={() => toggleSaved(product.id)} isSaved={isSaved} />
 
           <div className="rounded-[1.5rem] border border-[#d5dfeb] bg-white p-6 shadow-[0_8px_32px_rgba(10,40,90,.05)] sm:p-7">
@@ -581,6 +597,7 @@ export default function ProductDetail() {
 
         <section className="mt-14 border-t border-[#d5dfeb] pt-10"><div className="flex items-end justify-between gap-5"><div><p className="text-[10px] font-extrabold tracking-[.15em] text-[#a44a2b] uppercase">{t("product.keepDiscovering")}</p><h2 className="display-face mt-2 text-3xl text-[#0a285a] sm:text-4xl">{t("product.relatedTitle")}</h2><p className="mt-2 text-sm text-[#536b8c]">{t("product.relatedNote")}</p></div><Link href="/" className="hidden items-center gap-1 text-xs font-extrabold text-[#0a285a] underline decoration-[#f2683a] decoration-2 underline-offset-4 sm:flex">{t("home.viewAll")} <ArrowRight className="size-3.5 rtl:-scale-x-100" /></Link></div>{related.length ? <div className="hide-scrollbar mt-6 flex gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:overflow-visible">{related.map(item => <RelatedCard key={item.id} product={item} />)}</div> : <div className="mt-6 rounded-2xl border border-dashed border-[#b8c9dc] bg-white/60 px-6 py-10 text-center"><p className="text-sm font-bold text-[#0a285a]">{t("product.relatedEmpty")}</p><Link href="/" className="mt-3 inline-block text-xs font-extrabold text-[#f2683a] underline underline-offset-4">{t("product.browseCatalog")}</Link></div>}</section>
       </div>
+      <MobileTabBar />
       {zoomOpen ? <ImageLightbox product={product} selectedImageIndex={selectedImageIndex} onClose={() => setZoomOpen(false)} onSelectImage={setSelectedImageIndex} onChangeImage={changeImage} /> : null}
     </main>
   );

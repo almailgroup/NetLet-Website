@@ -52,6 +52,26 @@ With the four `FIREBASE_*` variables unset, the same endpoints fall back to the
 local scrypt digest in `password_hash`. Exactly one of the two is set on any
 given account.
 
+## Chrome
+
+`StoreHeader` and `MobileTabBar` are the site's navigation, and every shopping
+page uses both. They exist because the cart did not: a shopper could add four
+things from a category page and have no way to reach the cart from it. The
+drawer is mounted once in `App`, not per page, for the same reason.
+
+Two pages deliberately opt out. Home keeps its own taller header — it carries
+the department rail and the hover-to-expand behaviour, which only earn their
+place on the page you land on. Checkout keeps a bare one: every extra exit on a
+payment page is an invitation to take it.
+
+`useOverlay` is what a drawer, dialog or sheet owes whoever opened it —
+Escape closes, focus returns to the opener, the page behind stops scrolling.
+Use it for anything modal rather than re-deriving two of the three.
+
+`.tap-target` grows a small control's hit area to 44px through a pseudo-element,
+without changing how it looks. Gallery dots are 6px on purpose; a 6px *target*
+was a coin toss on a phone.
+
 ## Browsing
 
 `/category/:slug` is the department page — the sidebar, the grid, the sort.

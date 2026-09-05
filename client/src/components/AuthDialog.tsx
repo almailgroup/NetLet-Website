@@ -10,6 +10,7 @@ import { LoaderCircle, LogIn, UserPlus, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useTranslation } from "@/lib/useTranslation";
+import { useOverlay } from "@/lib/useOverlay";
 
 type Mode = "signin" | "register";
 
@@ -32,12 +33,7 @@ export default function AuthDialog({ open, onClose }: { open: boolean; onClose: 
     }
   }, [open, mode]);
 
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (event: KeyboardEvent) => event.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  useOverlay(open, onClose);
 
   const settle = async (displayName: string | null) => {
     await utils.auth.me.invalidate();

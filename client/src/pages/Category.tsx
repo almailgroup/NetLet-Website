@@ -12,7 +12,8 @@
  */
 import { FilterSidebar } from "@/components/browse/FilterSidebar";
 import { ProductCard } from "@/components/ProductCard";
-import { LiveSearch } from "@/components/LiveSearch";
+import { StoreHeader } from "@/components/StoreHeader";
+import { MobileTabBar } from "@/components/MobileTabBar";
 import { useCart } from "@/contexts/CartContext";
 import { useCustomer } from "@/contexts/CustomerContext";
 import { appPath } from "@/lib/basePath";
@@ -20,6 +21,7 @@ import { logoImage } from "@/lib/brandAssets";
 import { trpc } from "@/lib/trpc";
 import { usePageMeta } from "@/lib/usePageMeta";
 import { useTranslation } from "@/lib/useTranslation";
+import { useOverlay } from "@/lib/useOverlay";
 import {
   activeFilterCount,
   browse,
@@ -62,6 +64,7 @@ export default function Category() {
 
   const [search, setSearch] = useState("");
   const [sheetOpen, setSheetOpen] = useState(false);
+  useOverlay(sheetOpen, () => setSheetOpen(false));
 
   const slug = params?.slug ?? "all";
 
@@ -198,28 +201,12 @@ export default function Category() {
   );
 
   return (
-    <main className="min-h-screen bg-background pb-24 text-[#0a285a] lg:pb-10">
-      <header className="sticky top-0 z-40 border-b border-[#d5dfeb] bg-background/95 backdrop-blur-xl">
-        <div className="container flex h-[72px] items-center gap-3 lg:gap-5">
-          <Link href="/" className="flex shrink-0 items-center" aria-label={t("header.home")}>
-            <img src={logoImage} alt="NetLet" className="h-9 w-auto max-w-[118px] object-contain" />
-          </Link>
-          <div className="hidden min-w-0 flex-1 lg:block">
-            <LiveSearch catalog={catalog} value={search} onChange={setSearch} onSelectProduct={openProduct} />
-          </div>
-          <Link href="/" className="glass pressable ms-auto inline-flex shrink-0 items-center gap-2 rounded-full px-3.5 py-2 text-xs font-extrabold lg:ms-0">
-            <ArrowLeft className="size-4 rtl:-scale-x-100" />
-            <span className="hidden sm:inline">{t("header.continueShopping")}</span>
-          </Link>
-        </div>
-        <div className="container pb-3 lg:hidden">
-          <LiveSearch catalog={catalog} value={search} onChange={setSearch} onSelectProduct={openProduct} />
-        </div>
-      </header>
+    <main className="min-h-screen bg-background pb-40 text-[#0a285a] lg:pb-10">
+      <StoreHeader catalog={catalog} search={search} onSearch={setSearch} onSelectProduct={openProduct} />
 
       <div className="container pt-4 sm:pt-6">
         <nav className="flex items-center gap-1.5 text-[12px] text-[#7e859b]" aria-label={t("nav.breadcrumb")}>
-          <Link href="/" className="hover:text-[#0a285a]">{t("nav.home")}</Link>
+          <Link href="/" className="py-1.5 hover:text-[#0a285a]">{t("nav.home")}</Link>
           <ChevronRight className="size-3.5 rtl:-scale-x-100" aria-hidden />
           <span className="text-[#404553]">{title}</span>
         </nav>
@@ -233,7 +220,7 @@ export default function Category() {
             </div>
           </aside>
 
-          <section aria-label={t("browse.resultsRegion")}>
+          <section id="main" aria-label={t("browse.resultsRegion")}>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h1 className="text-[15px] font-extrabold text-[#0a285a]" aria-live="polite">
                 {isLoading || error ? " " : results.length === 0
@@ -339,7 +326,7 @@ export default function Category() {
           button, so the filters do not push the products off the first screen. */}
       <button
         onClick={() => setSheetOpen(true)}
-        className="glass glass-navy pressable fixed inset-x-0 bottom-4 z-30 mx-auto flex w-fit items-center gap-2 rounded-full px-6 py-3.5 text-xs font-extrabold shadow-[0_10px_30px_rgba(10,40,90,.25)] lg:hidden"
+        className="glass glass-navy pressable fixed inset-x-0 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-30 mx-auto flex w-fit items-center gap-2 rounded-full px-6 py-3.5 text-xs font-extrabold shadow-[0_10px_30px_rgba(10,40,90,.25)] lg:hidden"
       >
         <SlidersHorizontal className="size-4" aria-hidden />
         {activeCount ? t("browse.filtersWithCount", { count: activeCount }) : t("browse.filters")}
@@ -379,6 +366,7 @@ export default function Category() {
           </aside>
         </div>
       ) : null}
+      <MobileTabBar />
     </main>
   );
 }

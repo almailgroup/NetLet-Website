@@ -207,6 +207,39 @@
   .pressable:active {
     transform: scale(0.97);
   }
+
+  /*
+   * A visible focus ring, on everything, in the brand's own orange.
+   *
+   * The browser default was being suppressed by Tailwind's reset and only
+   * `.glass` replaced it, so tabbing through most of the storefront moved an
+   * invisible cursor. `:focus-visible` rather than `:focus` keeps it off for
+   * mouse clicks, which is what makes an always-on ring feel broken.
+   */
+  :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+    outline: 2px solid #f2683a;
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  /*
+   * Enlarges a small control's hit area without changing how it looks.
+   *
+   * Gallery dots are 6px because 44px dots would be absurd, but a 6px tap
+   * target is a coin toss on a phone — the guidance is 44px and these were
+   * missing it by a factor of seven. The pseudo-element does the catching.
+   */
+  .tap-target {
+    position: relative;
+  }
+  .tap-target::after {
+    content: "";
+    position: absolute;
+    inset: 50%;
+    width: 44px;
+    height: 44px;
+    transform: translate(-50%, -50%);
+  }
   .hide-scrollbar {
     scrollbar-width: none;
   }

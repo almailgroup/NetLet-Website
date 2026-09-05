@@ -2,6 +2,7 @@
  * NetLet design reminder: public marketplace storefront in pearl white, luxury navy,
  * and NetLet Orange — with shopping state provided by Shopify’s normalized cart contract.
  */
+import { BagDrawer } from "@/components/BagDrawer";
 import { Toaster } from "@/components/ui/sonner";
 import { useTranslation } from "@/lib/useTranslation";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -88,6 +89,8 @@ function App() {
             <CartProvider>
               <StorefrontToaster />
               <LiquidGlassFilters />
+              {/* One drawer for the whole app: the cart button is on every page. */}
+              <BagDrawer />
               <Router />
             </CartProvider>
           </CustomerProvider>

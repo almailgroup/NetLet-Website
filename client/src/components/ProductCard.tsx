@@ -88,7 +88,7 @@ export function CardGallery({ product, onDetails, compact }: { product: Product;
       </button>
 
       {images.length > 1 ? (
-        <div className="mt-2 flex items-center justify-center gap-1.5" onPointerLeave={() => setPinned(false)}>
+        <div className="relative z-10 mt-2 flex items-center justify-center gap-3" onPointerLeave={() => setPinned(false)}>
           {images.map((item, position) => (
             <button
               key={`dot-${item.url}-${position}`}
@@ -96,7 +96,7 @@ export function CardGallery({ product, onDetails, compact }: { product: Product;
               onClick={(event) => { event.stopPropagation(); setIndex(position); setPinned(true); }}
               aria-label={t("product.previewImage", { position: position + 1, total: images.length, name: product.title })}
               aria-current={position === index}
-              className={`pressable rounded-full transition-all duration-200 ${compact ? "size-1.5" : "size-2"} ${position === index ? "scale-125 bg-[#0a285a]" : "bg-[#c3ccda] hover:bg-[#8fa3bd]"}`}
+              className={`pressable tap-target rounded-full transition-all duration-200 ${compact ? "size-1.5" : "size-2"} ${position === index ? "scale-125 bg-[#0a285a]" : "bg-[#c3ccda] hover:bg-[#8fa3bd]"}`}
             />
           ))}
         </div>
@@ -138,10 +138,10 @@ export function ProductCard({ product, saved, onSave, onShare, onDetails, onAdd,
           ) : null}
         </div>
 
-        <button onClick={onSave} aria-pressed={saved} aria-label={t(saved ? "product.removeSaved" : "product.save", { name: product.title })} className={`glass pressable absolute end-1.5 top-1.5 grid size-8 place-items-center rounded-full ${saved ? "!text-[#e61c38]" : ""}`}><Heart className={`size-4 ${saved ? "fill-current" : ""}`} /></button>
+        <button onClick={onSave} aria-pressed={saved} aria-label={t(saved ? "product.removeSaved" : "product.save", { name: product.title })} className={`glass pressable tap-target absolute end-1.5 top-1.5 grid size-8 place-items-center rounded-full ${saved ? "!text-[#e61c38]" : ""}`}><Heart className={`size-4 ${saved ? "fill-current" : ""}`} /></button>
         {/* Share is secondary: it appears on hover on a pointer device and is
             always present on touch, where there is no hover to reveal it. */}
-        <button onClick={share} aria-label={t("product.share", { name: product.title })} className="glass pressable absolute end-1.5 top-11 grid size-8 place-items-center rounded-full transition-opacity duration-200 @[15rem]:opacity-0 @[15rem]:group-hover:opacity-100 @[15rem]:group-focus-within:opacity-100"><Share2 className="size-3.5" /></button>
+        <button onClick={share} aria-label={t("product.share", { name: product.title })} className="glass pressable tap-target absolute end-1.5 top-11 grid size-8 place-items-center rounded-full transition-opacity duration-200 @[15rem]:opacity-0 @[15rem]:group-hover:opacity-100 @[15rem]:group-focus-within:opacity-100"><Share2 className="size-3.5" /></button>
       </div>
 
       <div className="flex flex-1 flex-col px-0.5 pb-0.5 pt-3">

@@ -10,10 +10,10 @@ import { useCustomer } from "@/contexts/CustomerContext";
 import AuthDialog from "@/components/AuthDialog";
 import { DEMO_MODE } from "@/lib/demoMode";
 import { trpc } from "@/lib/trpc";
-import { filterAndSortCatalog, type AvailabilityFilter, type CatalogSort } from "@shared/commerce/catalog";
+import { filterAndSortCatalog } from "@shared/commerce/catalog";
 import type { Product } from "@shared/commerce/types";
 import { kuwaitDeliveryZones } from "@shared/customer";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowDownRight,
   ArrowRight,
@@ -36,7 +36,6 @@ import {
   Search,
   ShoppingBag,
   Share2,
-  SlidersHorizontal,
   Sparkles,
   Store,
   Trash2,
@@ -180,20 +179,97 @@ function ProductRail({ id, title, description, dark = false, products, catalogLo
   return <section id={id} className={dark ? "bg-[#0a285a] py-9 sm:py-12" : "py-9 sm:py-12"}><div className="container"><div className="flex items-end justify-between gap-4"><div><p className={`text-[10px] font-extrabold tracking-[.16em] uppercase ${dark ? "text-[#ffcc64]" : "text-[#a44a2b]"}`}>{t("home.liveCatalogAria")}</p><h2 className={`display-face mt-1 text-3xl sm:text-4xl ${dark ? "text-white" : "text-[#0a285a]"}`}>{railTitle}</h2><p className={`mt-1 text-xs ${dark ? "text-[#b9cce5]" : "text-[#536b8c]"}`}>{t(description)}</p></div><div className="hidden items-center gap-2 sm:flex"><IconButton label={t("home.previousProducts", { title: railTitle })} onClick={() => toast(t("home.moreControlsSoon"))} className={dark ? "border border-[#49658d] text-white hover:bg-white/10" : "border border-[#d5dfeb]"}><ChevronLeft className="size-4 rtl:-scale-x-100" /></IconButton><IconButton label={t("home.nextProducts", { title: railTitle })} onClick={() => toast(t("home.moreControlsSoon"))} className={dark ? "border border-[#49658d] text-white hover:bg-white/10" : "border border-[#d5dfeb]"}><ChevronRight className="size-4 rtl:-scale-x-100" /></IconButton><button onClick={onViewAll} className={`pressable rounded-full px-3.5 py-2 text-[10px] font-extrabold tracking-[.08em] uppercase ${dark ? "bg-white/10 text-white hover:bg-white/20" : "border border-[#d5dfeb] bg-white text-[#0a285a] hover:bg-[#e7edf5]"}`}>{t("home.viewAll")}</button></div></div>{catalogLoading ? <CatalogSkeleton dark={dark} /> : catalogError ? <div className={`mt-5 rounded-2xl border px-6 py-10 text-center ${dark ? "border-[#49658d] bg-white/5 text-white" : "border-[#f2b69e] bg-white text-[#0a285a]"}`}><p className="text-sm font-bold">{t("home.catalogSlow")}</p></div> : railProducts.length ? <div className="hide-scrollbar mt-5 flex gap-3 overflow-x-auto pb-1 lg:grid lg:grid-cols-4 lg:overflow-visible">{railProducts.map((product) => <div key={`${id}-${product.id}`} className="min-w-[172px] sm:min-w-[195px] lg:min-w-0"><ProductCard compact product={product} saved={saved.includes(product.id)} onSave={() => onSave(product.id, product.title)} onDetails={() => onDetails(product)} onAdd={() => void onAdd(product)} onBuyNow={() => void onBuyNow(product)} isAdding={isAdding} /></div>)}{supportCard && products.length < 4 ? <button onClick={() => onSelectSupport(supportCard.category)} className="group relative min-h-[248px] min-w-[230px] overflow-hidden rounded-2xl text-start sm:min-w-[260px] lg:min-w-0"><img src={supportCard.image} alt="" className="absolute inset-0 size-full object-cover transition-transform duration-500 group-hover:scale-105" /><div className="absolute inset-0 bg-gradient-to-t from-[#061b3b]/85 via-[#061b3b]/16 to-transparent" /><div className="absolute bottom-0 start-0 end-0 p-5 text-white"><p className="text-[9px] font-extrabold tracking-[.14em] text-[#ffe6b2] uppercase">{t(supportCard.eyebrow)}</p><h3 className="display-face mt-2 max-w-[220px] text-3xl leading-[.92]">{t(supportCard.title)}</h3><span className="mt-4 inline-flex items-center gap-1 text-[10px] font-extrabold tracking-[.08em] uppercase">{t("home.shopCollection")} <ArrowRight className="size-3.5 rtl:-scale-x-100" /></span></div></button> : null}</div> : <div className={`mt-5 rounded-2xl border border-dashed px-6 py-10 text-center ${dark ? "border-[#49658d] bg-white/5 text-[#d9e7f7]" : "border-[#b8c9dc] bg-white/55 text-[#536b8c]"}`}><Search className="mx-auto size-5" /><p className="mt-2 text-sm font-bold">{t("home.noMatches")}</p><button onClick={onViewAll} className="mt-3 text-xs font-extrabold text-[#f2683a] underline underline-offset-4">{t("home.showCatalog")}</button></div>}</div></section>;
 }
 
-function CatalogDiscoveryPanel({ categories, activeCategory, availability, sort, resultCount, loading, onCategory, onAvailability, onSort }: {
-  categories: string[];
+/**
+ * Category rail: the departments, as pictures, directly under the hero.
+ *
+ * This replaces a panel of availability radios and a sort dropdown. Those are
+ * refinements — they answer "narrow what I am already looking at" — and putting
+ * them in the first screen asked a shopper who had just arrived to operate a
+ * filter before they had seen a single product. A marketplace opens with
+ * departments, and departments are easier to recognise than to read.
+ *
+ * The artwork is the catalog's own: each tile borrows the first image of the
+ * first product in that department, so the rail illustrates itself and keeps
+ * illustrating itself as the merchant's catalog changes. A department with no
+ * products yet falls back to its brand colour rather than to a broken tile.
+ *
+ * Departments come from `categoryRail` — which carries the Arabic labels — plus
+ * any product type in the live catalog that is not one of them, so a merchant
+ * adding a department is not hidden by a hard-coded list.
+ */
+function CategoryRail({ categories, activeCategory, onSelect }: {
+  categories: { query: string; label: string; color: string; image?: string }[];
   activeCategory: string;
-  availability: AvailabilityFilter;
-  sort: CatalogSort;
-  resultCount: number;
-  loading: boolean;
-  onCategory: (category: string) => void;
-  onAvailability: (filter: AvailabilityFilter) => void;
-  onSort: (sort: CatalogSort) => void;
+  onSelect: (category: string) => void;
 }) {
   const { t } = useTranslation();
-  const availabilityLabel: Record<AvailabilityFilter, MessageKey> = { all: "home.all", available: "home.available", unavailable: "home.unavailable" };
-  return <section id="catalog-discovery" className="container pt-6 sm:pt-8"><div className="rounded-[1.5rem] border border-[#d5dfeb] bg-white/80 p-4 shadow-[0_10px_25px_rgba(10,40,90,.05)] backdrop-blur-sm sm:p-5"><div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between"><div className="flex items-center gap-3"><div className="grid size-10 place-items-center rounded-xl bg-[#e7edf5] text-[#0a285a]"><SlidersHorizontal className="size-5" /></div><div><p className="text-[10px] font-extrabold tracking-[.14em] text-[#a44a2b] uppercase">{t("home.browseCatalog")}</p><p className="mt-0.5 text-sm font-bold text-[#0a285a]">{loading ? t("home.refreshingProducts") : resultCount === 1 ? t("home.productInView") : t("home.productsInView", { count: resultCount })}</p></div></div><div className="flex flex-wrap items-center gap-2"><div className="flex rounded-xl border border-[#d5dfeb] bg-[#f3f2ed] p-1" aria-label={t("home.availabilityFilter")}>{(["all", "available", "unavailable"] as AvailabilityFilter[]).map((filter) => <button key={filter} onClick={() => onAvailability(filter)} className={`pressable rounded-sg px-3 py-2 text-[10px] font-extrabold ${availability === filter ? "bg-[#0a285a] text-white" : "text-[#536b8c] hover:bg-white"}`}>{t(availabilityLabel[filter])}</button>)}</div><label className="flex items-center gap-2 rounded-xl border border-[#d5dfeb] bg-white px-3 py-2 text-[10px] font-extrabold text-[#536b8c]">{t("home.sort")}<select aria-label={t("home.sortAria")} value={sort} onChange={(event) => onSort(event.target.value as CatalogSort)} className="bg-transparent font-extrabold text-[#0a285a] outline-none"><option value="catalog">{t("home.sortCatalog")}</option><option value="price-low">{t("home.sortPriceLow")}</option><option value="price-high">{t("home.sortPriceHigh")}</option><option value="offers">{t("home.sortOffers")}</option></select></label></div></div><div className="hide-scrollbar mt-4 flex gap-2 overflow-x-auto pb-1" aria-label={t("home.liveCategories")}><button onClick={() => onCategory("All")} className={`pressable shrink-0 rounded-full px-3.5 py-2 text-[10px] font-extrabold ${activeCategory === "All" ? "bg-[#f2683a] text-white" : "border border-[#d5dfeb] bg-white text-[#0a285a] hover:border-[#aac0da]"}`}>{t("home.allProducts")}</button>{categories.map((category) => <button key={category} onClick={() => onCategory(category)} className={`pressable shrink-0 rounded-full px-3.5 py-2 text-[10px] font-extrabold ${activeCategory === category ? "bg-[#0a285a] text-white" : "border border-[#d5dfeb] bg-white text-[#0a285a] hover:border-[#aac0da]"}`}>{category}</button>)}</div></div></section>;
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [overflowing, setOverflowing] = useState(false);
+
+  // Arrows only when there is something off-screen to reach. Watched rather
+  // than measured once: the rail fills in as the catalog arrives, and it
+  // reflows on rotate.
+  useEffect(() => {
+    const track = trackRef.current;
+    if (!track) return;
+    const measure = () => setOverflowing(track.scrollWidth - track.clientWidth > 4);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(track);
+    return () => observer.disconnect();
+  }, [categories.length]);
+
+  // Roughly one screenful, so a click advances the rail rather than nudging it.
+  const scrollBy = (direction: -1 | 1) => {
+    const track = trackRef.current;
+    if (!track) return;
+    track.scrollBy({ left: direction * Math.round(track.clientWidth * 0.8), behavior: "smooth" });
+  };
+
+  const arrow = "pressable absolute top-[calc(1.5rem+58px)] z-10 hidden size-9 -translate-y-1/2 place-items-center rounded-full border border-[#e2e5eb] bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.14)] hover:border-[#aac0da] lg:grid";
+
+  return (
+    <section id="departments" className="container relative pt-5 sm:pt-6" aria-label={t("home.shopByCategory")}>
+      {overflowing ? (
+        <>
+          {/* Placed against the container edge rather than the track, so the
+              arrows sit over the fade instead of stealing a tile's width. */}
+          <button onClick={() => scrollBy(-1)} aria-label={t("home.scrollBack")} className={`${arrow} start-1`}>
+            <ChevronLeft className="size-5 rtl:-scale-x-100" />
+          </button>
+          <button onClick={() => scrollBy(1)} aria-label={t("home.scrollForward")} className={`${arrow} end-1`}>
+            <ChevronRight className="size-5 rtl:-scale-x-100" />
+          </button>
+        </>
+      ) : null}
+
+      <div ref={trackRef} className={`hide-scrollbar flex gap-3 overflow-x-auto scroll-smooth pb-1 sm:gap-5 lg:px-8 ${overflowing ? "" : "justify-center"}`}>
+        {categories.map((category) => {
+          const active = activeCategory === category.query;
+          return (
+            <button
+              key={category.query}
+              onClick={() => onSelect(category.query)}
+              aria-current={active}
+              className="group flex w-[84px] shrink-0 flex-col items-center gap-2 sm:w-[116px]"
+            >
+              <span
+                className={`grid aspect-square w-full place-items-center overflow-hidden rounded-2xl border transition-all duration-200 group-hover:-translate-y-0.5 group-hover:shadow-[0_10px_22px_rgba(10,40,90,.12)] ${active ? "border-[#f2683a] ring-2 ring-[#f2683a]/25" : "border-[#e6e9ef]"}`}
+                style={{ backgroundColor: category.image ? "#ffffff" : category.color }}
+              >
+                {category.image
+                  ? <img src={category.image} alt="" aria-hidden loading="lazy" className="size-full object-contain p-2.5" />
+                  : <PackageCheck className="size-7 text-[#0a285a]/70" aria-hidden />}
+              </span>
+              <span className={`line-clamp-2 text-center text-[11px] font-bold leading-[1.25] sm:text-xs ${active ? "text-[#f2683a]" : "text-[#0a285a]"}`}>
+                {category.label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
 }
 
 function DealsSurface({ loading, error, product, saved, onSave, onDetails, onAdd, onBuyNow, isAdding, onRetry, onViewAll }: { loading: boolean; error: boolean; product?: Product; saved: string[]; onSave: (id: string, title: string) => void; onDetails: (product: Product) => void; onAdd: (product: Product) => void; onBuyNow: (product: Product) => void; isAdding: boolean; onRetry: () => void; onViewAll: () => void }) {
@@ -215,8 +291,6 @@ export default function Home() {
     : setAuthOpen(true);
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
-  const [availabilityFilter, setAvailabilityFilter] = useState<AvailabilityFilter>("all");
-  const [catalogSort, setCatalogSort] = useState<CatalogSort>("catalog");
   const { user, loading: authLoading, isAuthenticated, logout } = useAuth();
   const { itemCount, openCart, addItem, loading: cartLoading } = useCart();
   const { savedIds: saved, toggleSaved: togglePersistentSaved, deliveryZone, toggleLocale } = useCustomer();
@@ -229,12 +303,50 @@ export default function Home() {
     const matchesCategory = activeCategory === "All" || product.productType === activeCategory || product.tags.includes(activeCategory);
     return matchesSearch && matchesCategory;
     });
-    return filterAndSortCatalog(matchingProducts, { availability: availabilityFilter, sort: catalogSort });
-  }, [activeCategory, availabilityFilter, catalog, catalogSort, search]);
+    return filterAndSortCatalog(matchingProducts, { availability: "all", sort: "catalog" });
+  }, [activeCategory, catalog, search]);
   const liveCategories = useMemo(() => Array.from(new Set(catalog.map((product) => product.productType).filter((productType): productType is string => Boolean(productType)))).sort((left, right) => left.localeCompare(right)), [catalog]);
+
+  /**
+   * The tiles under the hero: the six named departments first, in their
+   * defined order, then any product type the merchant has added that is not
+   * one of them — so a new department appears in the rail rather than being
+   * hidden behind a hard-coded list.
+   *
+   * Each tile borrows the first image of the first product in its department.
+   * "All departments" takes the catalog's first image, since it stands for the
+   * whole of it. A department with nothing in it yet keeps its brand colour.
+   */
+  const departmentTiles = useMemo(() => {
+    const firstImage = (query: string) =>
+      (query === "All"
+        ? catalog[0]
+        : catalog.find((product) => product.productType === query || product.tags.includes(query))
+      )?.images[0]?.url;
+
+    const named = categoryRail.map((category) => ({
+      query: category.query as string,
+      label: t(category.key),
+      color: category.color,
+      image: firstImage(category.query),
+    }));
+
+    const knownQueries = new Set<string>(categoryRail.map((category) => category.query));
+    const extra = liveCategories
+      .filter((productType) => !knownQueries.has(productType))
+      .map((productType) => ({
+        query: productType,
+        // Merchant-entered, so it is shown as typed rather than translated.
+        label: productType,
+        color: "#e7edf5",
+        image: firstImage(productType),
+      }));
+
+    return [...named, ...extra];
+  }, [catalog, liveCategories, t]);
   const rotateProducts = (offset: number) => visibleProducts.length ? [...visibleProducts.slice(offset), ...visibleProducts.slice(0, offset)] : [];
   const selectCategory = (category: string) => { setActiveCategory(category); window.setTimeout(() => document.getElementById("popular")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0); };
-  const showAll = () => { setSearch(""); setActiveCategory("All"); setAvailabilityFilter("all"); setCatalogSort("catalog"); window.setTimeout(() => document.getElementById("popular")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0); };
+  const showAll = () => { setSearch(""); setActiveCategory("All"); window.setTimeout(() => document.getElementById("popular")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0); };
   const toggleSaved = (id: string, title: string) => { const isSaved = saved.includes(id); togglePersistentSaved(id); toast(t(isSaved ? "saved.removed" : "saved.savedForLater", { name: title })); };
   const addProduct = async (product: Product) => { const variant = product.variants[0]; if (!variant?.availableForSale) return toast.error(t("cart.itemUnavailable")); try { await addItem(variant.id); toast.success(t("cart.added", { name: product.title })); } catch { toast.error(t("cart.addFailed")); } };
   // Buy now is add-to-cart plus the checkout step, not a separate path: the
@@ -296,7 +408,7 @@ export default function Home() {
         opposite so the warmth reads as deliberate rather than as a cast. */}
     <section className="container pt-5 sm:pt-6"><div className="relative isolate min-h-[200px] overflow-hidden rounded-[1.5rem] bg-[#06162f] lg:min-h-[248px]"><div className="absolute inset-0 bg-[linear-gradient(105deg,#06162f_0%,#0a285a_44%,#14428f_78%,#1c58b8_100%)]" /><div className="absolute -end-16 -top-32 size-[420px] rounded-full bg-[radial-gradient(circle,rgba(242,104,58,.52)_0%,rgba(242,104,58,0)_65%)]" /><div className="absolute -bottom-40 start-[36%] size-[380px] rounded-full bg-[radial-gradient(circle,rgba(56,189,248,.34)_0%,rgba(56,189,248,0)_68%)]" /><img src={heroImage} alt="" aria-hidden className="pointer-events-none absolute inset-y-0 end-0 hidden h-full w-[46%] object-cover opacity-30 [mask-image:linear-gradient(to_right,transparent,#000_58%)] rtl:[mask-image:linear-gradient(to_left,transparent,#000_58%)] lg:block" /><div className="absolute inset-0 bg-[linear-gradient(90deg,#06162f_0%,rgba(6,22,47,.62)_44%,rgba(6,22,47,0)_74%)] rtl:bg-[linear-gradient(270deg,#06162f_0%,rgba(6,22,47,.62)_44%,rgba(6,22,47,0)_74%)]" /><div className="relative z-10 flex min-h-[200px] max-w-[640px] flex-col justify-center px-6 py-7 sm:px-10 lg:min-h-[248px] lg:px-12"><div className="reveal-up flex items-center gap-2"><span className="h-px w-6 bg-[#ff8a5c]" /><span className="text-[10px] font-extrabold tracking-[0.17em] text-[#ffb495] uppercase">{t("home.eyebrow")}</span></div><h1 className="reveal-up reveal-delay-1 display-face mt-2.5 text-[2rem] leading-[.98] text-white sm:text-[2.5rem] lg:text-[3rem]">{t("home.heroTitle")} <em className="font-normal text-[#9fc6ff]">{t("home.heroTitleEm")}</em></h1><div className="reveal-up reveal-delay-2 mt-4 flex flex-wrap items-center gap-2.5"><button onClick={showAll} className="glass glass-accent pressable flex items-center gap-2 rounded-full px-5 py-3 text-xs font-extrabold">{t("home.shopCatalog")} <ArrowRight className="size-4 rtl:-scale-x-100" /></button><button onClick={() => document.getElementById("deals")?.scrollIntoView({ behavior: "smooth" })} className="glass glass-on-dark pressable rounded-full px-5 py-3 text-xs font-extrabold">{t("home.exploreDeals")}</button></div><div className="mt-4 hidden flex-wrap items-center gap-x-5 gap-y-1.5 text-[11px] font-bold text-[#a9c6ec] lg:flex"><span className="flex items-center gap-1.5"><Truck className="size-3.5 text-[#ff9a70]" /> {deliveryZone ? t("delivery.selected", { name: isArabic ? deliveryZone.labelAr : deliveryZone.label }) : t("home.chooseArea")}</span><span className="flex items-center gap-1.5"><Store className="size-3.5 text-[#ff9a70]" /> {t("home.liveCatalog")}</span><span className="flex items-center gap-1.5"><ShoppingBag className="size-3.5 text-[#ff9a70]" /> {t("home.persistentCart")}</span></div></div><div className="glass glass-on-dark absolute end-4 top-4 rounded-full px-3 py-1.5 text-[10px] font-extrabold tracking-[.08em] uppercase">{t("home.newSeason")}</div></div></section>
 
-    <CatalogDiscoveryPanel categories={liveCategories} activeCategory={activeCategory} availability={availabilityFilter} sort={catalogSort} resultCount={visibleProducts.length} loading={catalogLoading} onCategory={selectCategory} onAvailability={setAvailabilityFilter} onSort={setCatalogSort} />
+    <CategoryRail categories={departmentTiles} activeCategory={activeCategory} onSelect={selectCategory} />
     <DealsSurface loading={catalogLoading} error={Boolean(catalogError)} product={firstProduct} saved={saved} onSave={toggleSaved} onDetails={openProduct} onAdd={addProduct} onBuyNow={buyProduct} isAdding={cartLoading} onRetry={() => void refetch()} onViewAll={showAll} />
 
     {homeRailDefinitions.slice(1).map((rail, index) => <ProductRail key={rail.id} id={rail.id} title={rail.title} description={rail.description} dark={rail.treatment === "navy"} products={rotateProducts(index)} catalogLoading={catalogLoading} catalogError={Boolean(catalogError)} saved={saved} onSave={toggleSaved} onDetails={openProduct} onAdd={addProduct} onBuyNow={buyProduct} isAdding={cartLoading} onViewAll={showAll} supportCard={railSupportCards[index]} onSelectSupport={selectCategory} />)}

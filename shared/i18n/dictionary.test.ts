@@ -1,3 +1,5 @@
+import { readdirSync, readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { ar, directionFor, en, LOCALES, messages, translate, type MessageKey } from "./dictionary";
 
@@ -58,5 +60,35 @@ describe("directionFor", () => {
     expect(directionFor("ar")).toBe("rtl");
     expect(directionFor("en")).toBe("ltr");
     expect(LOCALES).toEqual(["en", "ar"]);
+  });
+});
+
+describe("dictionary hygiene", () => {
+  /**
+   * Copy that nothing renders is copy nobody maintains: it still has to be
+   * translated, still has to be reviewed, and quietly stops matching the page.
+   * Every key must appear as a literal somewhere in the source — including the
+   * ones reached indirectly, since those are spelled out in the content and
+   * data files that hold them.
+   */
+  it("has no key the app never asks for", () => {
+    const root = path.resolve(import.meta.dirname, "../..");
+    const skip = new Set(["node_modules", "dist", ".git", "ios-app", "drizzle"]);
+    const sources: string[] = [];
+    const walk = (dir: string) => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        if (entry.name.startsWith(".") || skip.has(entry.name)) continue;
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) walk(full);
+        // The dictionary defines the keys; it cannot also be what justifies them.
+        else if (/\.tsx?$/.test(entry.name) && !full.endsWith(path.join("i18n", "dictionary.ts"))) {
+          sources.push(readFileSync(full, "utf-8"));
+        }
+      }
+    };
+    walk(root);
+    const corpus = sources.join("\n");
+    const unused = (Object.keys(en) as MessageKey[]).filter((key) => !corpus.includes(`"${key}"`));
+    expect(unused).toEqual([]);
   });
 });

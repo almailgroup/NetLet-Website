@@ -83,3 +83,15 @@ export const railSupportCardContent = [
   { eyebrow: "support.tech.eyebrow", title: "support.tech.title", category: "Electronics" },
   { eyebrow: "support.everyday.eyebrow", title: "support.everyday.title", category: "All" },
 ] as const satisfies readonly { eyebrow: MessageKey; title: MessageKey; category: string }[];
+
+/**
+ * The message key for a merchant's department name, when NetLet has one.
+ *
+ * Product types are merchant-written, so most have no translation and are shown
+ * as typed. The six named departments do have one, and showing "Electronics" on
+ * the Arabic storefront when "الإلكترونيات" exists would be a gap the shopper
+ * reads as an unfinished translation.
+ */
+export function categoryMessageKey(category: string): MessageKey | null {
+  return categoryRail.find((entry) => entry.query === category)?.key ?? null;
+}

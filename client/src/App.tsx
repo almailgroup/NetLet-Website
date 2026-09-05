@@ -27,6 +27,7 @@ const ProductDetail = lazy(() => import("@/pages/ProductDetail"));
 const Checkout = lazy(() => import("@/pages/Checkout"));
 const Account = lazy(() => import("@/pages/Account"));
 const Saved = lazy(() => import("@/pages/Saved"));
+const Category = lazy(() => import("@/pages/Category"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 /**
@@ -55,6 +56,7 @@ function Router() {
         <Route path="/account" component={Account} />
         <Route path="/saved" component={Saved} />
         <Route path="/checkout" component={Checkout} />
+        <Route path="/category/:slug" component={Category} />
         <Route path="/products/:handle" component={ProductDetail} />
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />

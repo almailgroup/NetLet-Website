@@ -52,6 +52,30 @@ With the four `FIREBASE_*` variables unset, the same endpoints fall back to the
 local scrypt digest in `password_hash`. Exactly one of the two is set on any
 given account.
 
+## Browsing
+
+`/category/:slug` is the department page — the sidebar, the grid, the sort.
+Clicking a department anywhere on the site goes there; the home page is a
+shopfront of curated rails, not a filtering surface, so it holds no "active
+category" of its own.
+
+`shared/commerce/browse.ts` is all of the logic and is pure: `facetsFor`
+derives the filters **from the products on the page**, so a catalog of laptops
+gets a Ram Size filter and one of shoes does not — nothing is hard-coded. A
+facet that cannot narrow is dropped (one brand, one option value, a rating
+threshold matching everything), because a control that changes nothing is worse
+than no control.
+
+**Filters live in the query string, never in state alone.** A narrowed list is
+something shoppers bookmark and send each other, so the URL is the single
+source of truth and the page reads back from it. Option facets are namespaced
+`opt.<name>` so a merchant option called "sort" cannot collide.
+
+Slugs are lossy on purpose — "Home & Kitchen" becomes `home-and-kitchen` — and
+`categoryFromSlug` resolves them back against the live catalog rather than
+trying to invert them. An unrecognised slug falls back to the whole catalog,
+never to an empty page.
+
 ## Languages
 
 The storefront ships in English and Arabic, from one dictionary in

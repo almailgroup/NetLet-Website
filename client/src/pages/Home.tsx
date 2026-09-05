@@ -11,6 +11,7 @@ import AuthDialog from "@/components/AuthDialog";
 import { DEMO_MODE } from "@/lib/demoMode";
 import { trpc } from "@/lib/trpc";
 import { filterAndSortCatalog } from "@shared/commerce/catalog";
+import { categorySlug } from "@shared/commerce/browse";
 import type { Product } from "@shared/commerce/types";
 import { kuwaitDeliveryZones } from "@shared/customer";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -197,9 +198,8 @@ function ProductRail({ id, title, description, dark = false, products, catalogLo
  * any product type in the live catalog that is not one of them, so a merchant
  * adding a department is not hidden by a hard-coded list.
  */
-function CategoryRail({ categories, activeCategory, onSelect }: {
+function CategoryRail({ categories, onSelect }: {
   categories: { query: string; label: string; color: string; image?: string }[];
-  activeCategory: string;
   onSelect: (category: string) => void;
 }) {
   const { t } = useTranslation();
@@ -244,29 +244,25 @@ function CategoryRail({ categories, activeCategory, onSelect }: {
       ) : null}
 
       <div ref={trackRef} className={`hide-scrollbar flex gap-3 overflow-x-auto scroll-smooth pb-1 sm:gap-5 lg:px-8 ${overflowing ? "" : "justify-center"}`}>
-        {categories.map((category) => {
-          const active = activeCategory === category.query;
-          return (
-            <button
-              key={category.query}
-              onClick={() => onSelect(category.query)}
-              aria-current={active}
-              className="group flex w-[84px] shrink-0 flex-col items-center gap-2 sm:w-[116px]"
+        {categories.map((category) => (
+          <button
+            key={category.query}
+            onClick={() => onSelect(category.query)}
+            className="group flex w-[84px] shrink-0 flex-col items-center gap-2 sm:w-[116px]"
+          >
+            <span
+              className="grid aspect-square w-full place-items-center overflow-hidden rounded-2xl border border-[#e6e9ef] transition-all duration-200 group-hover:-translate-y-0.5 group-hover:border-[#aac0da] group-hover:shadow-[0_10px_22px_rgba(10,40,90,.12)]"
+              style={{ backgroundColor: category.image ? "#ffffff" : category.color }}
             >
-              <span
-                className={`grid aspect-square w-full place-items-center overflow-hidden rounded-2xl border transition-all duration-200 group-hover:-translate-y-0.5 group-hover:shadow-[0_10px_22px_rgba(10,40,90,.12)] ${active ? "border-[#f2683a] ring-2 ring-[#f2683a]/25" : "border-[#e6e9ef]"}`}
-                style={{ backgroundColor: category.image ? "#ffffff" : category.color }}
-              >
-                {category.image
-                  ? <img src={category.image} alt="" aria-hidden loading="lazy" className="size-full object-contain p-2.5" />
-                  : <PackageCheck className="size-7 text-[#0a285a]/70" aria-hidden />}
-              </span>
-              <span className={`line-clamp-2 text-center text-[11px] font-bold leading-[1.25] sm:text-xs ${active ? "text-[#f2683a]" : "text-[#0a285a]"}`}>
-                {category.label}
-              </span>
-            </button>
-          );
-        })}
+              {category.image
+                ? <img src={category.image} alt="" aria-hidden loading="lazy" className="size-full object-contain p-2.5" />
+                : <PackageCheck className="size-7 text-[#0a285a]/70" aria-hidden />}
+            </span>
+            <span className="line-clamp-2 text-center text-[11px] font-bold leading-[1.25] text-[#0a285a] group-hover:text-[#f2683a] sm:text-xs">
+              {category.label}
+            </span>
+          </button>
+        ))}
       </div>
     </section>
   );
@@ -290,21 +286,17 @@ export default function Home() {
     ? toast(t("header.signInDisabled"), { description: t("header.signInDisabledNote") })
     : setAuthOpen(true);
   const [search, setSearch] = useState("");
-  const [activeCategory, setActiveCategory] = useState("All");
   const { user, loading: authLoading, isAuthenticated, logout } = useAuth();
   const { itemCount, openCart, addItem, loading: cartLoading } = useCart();
   const { savedIds: saved, toggleSaved: togglePersistentSaved, deliveryZone, toggleLocale } = useCustomer();
   const { data: catalog = [], isLoading: catalogLoading, error: catalogError, refetch } = trpc.commerce.products.list.useQuery({ first: 24 });
 
   const visibleProducts = useMemo(() => {
-    const matchingProducts = catalog.filter((product) => {
     const searchTerm = search.trim().toLowerCase();
-    const matchesSearch = !searchTerm || [product.title, product.description, product.productType, product.vendor, ...product.tags].join(" ").toLowerCase().includes(searchTerm);
-    const matchesCategory = activeCategory === "All" || product.productType === activeCategory || product.tags.includes(activeCategory);
-    return matchesSearch && matchesCategory;
-    });
+    const matchingProducts = catalog.filter((product) =>
+      !searchTerm || [product.title, product.description, product.productType, product.vendor, ...product.tags].join(" ").toLowerCase().includes(searchTerm));
     return filterAndSortCatalog(matchingProducts, { availability: "all", sort: "catalog" });
-  }, [activeCategory, catalog, search]);
+  }, [catalog, search]);
   const liveCategories = useMemo(() => Array.from(new Set(catalog.map((product) => product.productType).filter((productType): productType is string => Boolean(productType)))).sort((left, right) => left.localeCompare(right)), [catalog]);
 
   /**
@@ -345,8 +337,11 @@ export default function Home() {
     return [...named, ...extra];
   }, [catalog, liveCategories, t]);
   const rotateProducts = (offset: number) => visibleProducts.length ? [...visibleProducts.slice(offset), ...visibleProducts.slice(0, offset)] : [];
-  const selectCategory = (category: string) => { setActiveCategory(category); window.setTimeout(() => document.getElementById("popular")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0); };
-  const showAll = () => { setSearch(""); setActiveCategory("All"); window.setTimeout(() => document.getElementById("popular")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0); };
+  // Departments lead to the listing page rather than scrolling this one. A
+  // rail of four products was a teaser; the shopper asking for "Electronics"
+  // wants the department, with everything in it and a way to narrow it.
+  const selectCategory = (category: string) => navigate(`/category/${categorySlug(category)}`);
+  const showAll = () => navigate("/category/all");
   const toggleSaved = (id: string, title: string) => { const isSaved = saved.includes(id); togglePersistentSaved(id); toast(t(isSaved ? "saved.removed" : "saved.savedForLater", { name: title })); };
   const addProduct = async (product: Product) => { const variant = product.variants[0]; if (!variant?.availableForSale) return toast.error(t("cart.itemUnavailable")); try { await addItem(variant.id); toast.success(t("cart.added", { name: product.title })); } catch { toast.error(t("cart.addFailed")); } };
   // Buy now is add-to-cart plus the checkout step, not a separate path: the
@@ -393,7 +388,7 @@ export default function Home() {
       </div>
       <div className={`container overflow-hidden transition-all duration-300 ease-out lg:hidden ${headerCompact ? "max-h-0 pb-0 opacity-0" : "max-h-20 pb-3 opacity-100"}`} aria-hidden={headerCompact}><LiveSearch catalog={catalog} value={search} onChange={setSearch} onSelectProduct={openProduct} /></div>
       {/* Secondary bar: departments only, so the row reads as one rail. */}
-      <nav className={`container hidden items-center gap-2 overflow-hidden transition-all duration-300 ease-out lg:flex ${headerCompact ? "h-0 -translate-y-1 opacity-0" : "h-12 translate-y-0 opacity-100"}`} aria-hidden={headerCompact} inert={headerCompact} aria-label={t("nav.primary")}>{categoryRail.map((category, index) => <button key={category.query} onClick={() => selectCategory(category.query)} className={`pressable rounded-full px-3 py-2 text-xs font-semibold ${index === 0 ? "flex items-center gap-2 font-bold" : ""} ${activeCategory === category.query ? "glass glass-navy" : "glass !text-[#536b8c]"}`}>{index === 0 && <Menu className="size-4" />}{t(category.key)}</button>)}<div className="ms-auto flex shrink-0 items-center gap-1.5">
+      <nav className={`container hidden items-center gap-2 overflow-hidden transition-all duration-300 ease-out lg:flex ${headerCompact ? "h-0 -translate-y-1 opacity-0" : "h-12 translate-y-0 opacity-100"}`} aria-hidden={headerCompact} inert={headerCompact} aria-label={t("nav.primary")}>{categoryRail.map((category, index) => <button key={category.query} onClick={() => selectCategory(category.query)} className={`pressable rounded-full px-3 py-2 text-xs font-semibold ${index === 0 ? "flex items-center gap-2 font-bold" : ""} ${index === 0 ? "glass glass-navy" : "glass !text-[#536b8c]"}`}>{index === 0 && <Menu className="size-4" />}{t(category.key)}</button>)}<div className="ms-auto flex shrink-0 items-center gap-1.5">
         <IconButton label={t("header.notifications")} onClick={() => toast(t("header.notificationsSoon"))}><Bell className="size-[19px]" /></IconButton>
         <IconButton label={t("header.savedItems", { count: saved.length })} onClick={() => navigate("/saved")}><span className="relative"><Heart className="size-[19px]" />{saved.length ? <span className="absolute -end-2 -top-1.5 grid size-4 place-items-center rounded-full bg-[#f2683a] text-[9px] font-extrabold text-white">{saved.length}</span> : null}</span></IconButton>
       </div></nav>
@@ -408,12 +403,12 @@ export default function Home() {
         opposite so the warmth reads as deliberate rather than as a cast. */}
     <section className="container pt-5 sm:pt-6"><div className="relative isolate min-h-[200px] overflow-hidden rounded-[1.5rem] bg-[#06162f] lg:min-h-[248px]"><div className="absolute inset-0 bg-[linear-gradient(105deg,#06162f_0%,#0a285a_44%,#14428f_78%,#1c58b8_100%)]" /><div className="absolute -end-16 -top-32 size-[420px] rounded-full bg-[radial-gradient(circle,rgba(242,104,58,.52)_0%,rgba(242,104,58,0)_65%)]" /><div className="absolute -bottom-40 start-[36%] size-[380px] rounded-full bg-[radial-gradient(circle,rgba(56,189,248,.34)_0%,rgba(56,189,248,0)_68%)]" /><img src={heroImage} alt="" aria-hidden className="pointer-events-none absolute inset-y-0 end-0 hidden h-full w-[46%] object-cover opacity-30 [mask-image:linear-gradient(to_right,transparent,#000_58%)] rtl:[mask-image:linear-gradient(to_left,transparent,#000_58%)] lg:block" /><div className="absolute inset-0 bg-[linear-gradient(90deg,#06162f_0%,rgba(6,22,47,.62)_44%,rgba(6,22,47,0)_74%)] rtl:bg-[linear-gradient(270deg,#06162f_0%,rgba(6,22,47,.62)_44%,rgba(6,22,47,0)_74%)]" /><div className="relative z-10 flex min-h-[200px] max-w-[640px] flex-col justify-center px-6 py-7 sm:px-10 lg:min-h-[248px] lg:px-12"><div className="reveal-up flex items-center gap-2"><span className="h-px w-6 bg-[#ff8a5c]" /><span className="text-[10px] font-extrabold tracking-[0.17em] text-[#ffb495] uppercase">{t("home.eyebrow")}</span></div><h1 className="reveal-up reveal-delay-1 display-face mt-2.5 text-[2rem] leading-[.98] text-white sm:text-[2.5rem] lg:text-[3rem]">{t("home.heroTitle")} <em className="font-normal text-[#9fc6ff]">{t("home.heroTitleEm")}</em></h1><div className="reveal-up reveal-delay-2 mt-4 flex flex-wrap items-center gap-2.5"><button onClick={showAll} className="glass glass-accent pressable flex items-center gap-2 rounded-full px-5 py-3 text-xs font-extrabold">{t("home.shopCatalog")} <ArrowRight className="size-4 rtl:-scale-x-100" /></button><button onClick={() => document.getElementById("deals")?.scrollIntoView({ behavior: "smooth" })} className="glass glass-on-dark pressable rounded-full px-5 py-3 text-xs font-extrabold">{t("home.exploreDeals")}</button></div><div className="mt-4 hidden flex-wrap items-center gap-x-5 gap-y-1.5 text-[11px] font-bold text-[#a9c6ec] lg:flex"><span className="flex items-center gap-1.5"><Truck className="size-3.5 text-[#ff9a70]" /> {deliveryZone ? t("delivery.selected", { name: isArabic ? deliveryZone.labelAr : deliveryZone.label }) : t("home.chooseArea")}</span><span className="flex items-center gap-1.5"><Store className="size-3.5 text-[#ff9a70]" /> {t("home.liveCatalog")}</span><span className="flex items-center gap-1.5"><ShoppingBag className="size-3.5 text-[#ff9a70]" /> {t("home.persistentCart")}</span></div></div><div className="glass glass-on-dark absolute end-4 top-4 rounded-full px-3 py-1.5 text-[10px] font-extrabold tracking-[.08em] uppercase">{t("home.newSeason")}</div></div></section>
 
-    <CategoryRail categories={departmentTiles} activeCategory={activeCategory} onSelect={selectCategory} />
+    <CategoryRail categories={departmentTiles} onSelect={selectCategory} />
     <DealsSurface loading={catalogLoading} error={Boolean(catalogError)} product={firstProduct} saved={saved} onSave={toggleSaved} onDetails={openProduct} onAdd={addProduct} onBuyNow={buyProduct} isAdding={cartLoading} onRetry={() => void refetch()} onViewAll={showAll} />
 
     {homeRailDefinitions.slice(1).map((rail, index) => <ProductRail key={rail.id} id={rail.id} title={rail.title} description={rail.description} dark={rail.treatment === "navy"} products={rotateProducts(index)} catalogLoading={catalogLoading} catalogError={Boolean(catalogError)} saved={saved} onSave={toggleSaved} onDetails={openProduct} onAdd={addProduct} onBuyNow={buyProduct} isAdding={cartLoading} onViewAll={showAll} supportCard={railSupportCards[index]} onSelectSupport={selectCategory} />)}
 
-    <section className="container py-10 sm:py-14"><div className="mb-5 flex items-end justify-between"><div><p className="text-[10px] font-extrabold tracking-[.16em] text-[#a44a2b] uppercase">{t("home.browseYourPace")}</p><h2 className="display-face mt-1 text-3xl text-[#0a285a] sm:text-4xl">{t("home.categories")}</h2></div><button onClick={showAll} className="hidden items-center gap-1 text-xs font-extrabold text-[#0a285a] underline decoration-[#f2683a] decoration-2 underline-offset-4 sm:flex">{t("nav.allDepartments")} <ArrowRight className="size-3.5 rtl:-scale-x-100" /></button></div><div className="hide-scrollbar flex gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-3 lg:grid-cols-6">{categoryRail.map((category, index) => <button key={category.query} onClick={() => selectCategory(category.query)} className={`pressable group min-w-[132px] rounded-2xl border p-3 text-start shadow-[0_5px_15px_rgba(10,40,90,.04)] sm:min-w-0 ${activeCategory === category.query ? "border-[#f2683a] bg-white" : "border-[#d5dfeb] bg-white hover:border-[#aac0da]"}`}><div className="grid aspect-[1.38] place-items-center rounded-xl" style={{ backgroundColor: category.color }}><span className="grid size-11 place-items-center rounded-2xl bg-white/80 text-[#0a285a] shadow-sm">{index === 0 ? <PackageCheck className="size-5" /> : index === 1 ? <Sparkles className="size-5" /> : index === 2 ? <Store className="size-5" /> : index === 3 ? <Heart className="size-5" /> : index === 4 ? <ArrowDownRight className="size-5" /> : <ShoppingBag className="size-5" />}</span></div><span className="mt-3 block text-xs font-extrabold text-[#0a285a]">{t(category.key)}</span><span className="mt-1 flex items-center text-[10px] font-bold text-[#536b8c]">{t("home.browse")} <ArrowDownRight className="ms-1 size-3 rtl:-scale-x-100" /></span></button>)}</div></section>
+    <section className="container py-10 sm:py-14"><div className="mb-5 flex items-end justify-between"><div><p className="text-[10px] font-extrabold tracking-[.16em] text-[#a44a2b] uppercase">{t("home.browseYourPace")}</p><h2 className="display-face mt-1 text-3xl text-[#0a285a] sm:text-4xl">{t("home.categories")}</h2></div><button onClick={showAll} className="hidden items-center gap-1 text-xs font-extrabold text-[#0a285a] underline decoration-[#f2683a] decoration-2 underline-offset-4 sm:flex">{t("nav.allDepartments")} <ArrowRight className="size-3.5 rtl:-scale-x-100" /></button></div><div className="hide-scrollbar flex gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-3 lg:grid-cols-6">{categoryRail.map((category, index) => <button key={category.query} onClick={() => selectCategory(category.query)} className={`pressable group min-w-[132px] rounded-2xl border p-3 text-start shadow-[0_5px_15px_rgba(10,40,90,.04)] sm:min-w-0 border-[#d5dfeb] bg-white hover:border-[#aac0da]`}><div className="grid aspect-[1.38] place-items-center rounded-xl" style={{ backgroundColor: category.color }}><span className="grid size-11 place-items-center rounded-2xl bg-white/80 text-[#0a285a] shadow-sm">{index === 0 ? <PackageCheck className="size-5" /> : index === 1 ? <Sparkles className="size-5" /> : index === 2 ? <Store className="size-5" /> : index === 3 ? <Heart className="size-5" /> : index === 4 ? <ArrowDownRight className="size-5" /> : <ShoppingBag className="size-5" />}</span></div><span className="mt-3 block text-xs font-extrabold text-[#0a285a]">{t(category.key)}</span><span className="mt-1 flex items-center text-[10px] font-bold text-[#536b8c]">{t("home.browse")} <ArrowDownRight className="ms-1 size-3 rtl:-scale-x-100" /></span></button>)}</div></section>
 
     <section className="border-y border-[#d5dfeb] bg-white/45 py-10 sm:py-14"><div className="container"><div className="flex items-end justify-between gap-5"><div><p className="text-[10px] font-extrabold tracking-[.16em] text-[#a44a2b] uppercase">{t("home.notesFrom")}</p><h2 className="display-face mt-1 text-3xl text-[#0a285a] sm:text-4xl">{t("home.usefulReading")}</h2></div><button onClick={() => toast(t("home.editorialSoon"))} className="hidden items-center gap-1 text-xs font-extrabold text-[#0a285a] underline decoration-[#f2683a] decoration-2 underline-offset-4 sm:flex">{t("home.viewAll")} <ArrowRight className="size-3.5 rtl:-scale-x-100" /></button></div><div className="mt-6 grid gap-3 md:grid-cols-3">{editorialUpdates.map((entry) => <article key={entry.title} className="rounded-2xl border border-[#d5dfeb] bg-[#fffdf9] p-6"><p className="text-[9px] font-extrabold tracking-[.14em] text-[#f2683a] uppercase">{t(entry.date)}</p><h3 className="type-heading mt-4 text-lg tracking-[-.025em] text-[#0a285a]">{t(entry.title)}</h3><p className="type-body mt-3 text-sm leading-6 text-[#536b8c]">{t(entry.summary)}</p><button onClick={() => toast(t("home.guideSoon"))} className="mt-5 inline-flex items-center gap-1 text-[10px] font-extrabold tracking-[.1em] text-[#0a285a] uppercase">{t("home.readMore")} <ArrowRight className="size-3.5 text-[#f2683a] rtl:-scale-x-100" /></button></article>)}</div></div></section>
 

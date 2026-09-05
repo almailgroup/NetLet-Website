@@ -118,3 +118,6 @@ Postgres in-process via PGlite, applying the generated migration verbatim, so
 
 Configuration lives in `.env.example`, annotated with what each value switches
 off — nothing throws at boot, so a missing value shows up as a dead feature.
+`pnpm setup:env` writes the `.env` from it; given the Firebase service-account
+JSON it also writes the three values whose escaping is the usual failure.
+`pnpm preflight` then says what is still missing, by name.

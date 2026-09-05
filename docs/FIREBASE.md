@@ -79,6 +79,22 @@ download once the values are in your `.env`.
 
 ## 4. Put them in `.env`
 
+There is no `.env` in a fresh clone — it holds secrets, so it is gitignored and
+never committed. `.env.example` is the template it is made from.
+
+The short way, which does the escaping for you:
+
+```sh
+pnpm setup:env ~/Downloads/netlet-a1b2c-firebase-adminsdk-9xk2p.json --api-key=AIzaSy...
+```
+
+That reads the service-account JSON, writes `FIREBASE_PROJECT_ID`,
+`FIREBASE_CLIENT_EMAIL` and `FIREBASE_PRIVATE_KEY` in the form the file needs,
+generates `JWT_SECRET` if it is still blank, and leaves every value you have
+already set alone. It never prints a secret, only the names of the keys it set.
+
+By hand, the file wants:
+
 ```sh
 FIREBASE_PROJECT_ID=netlet-a1b2c
 FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxxxx@netlet-a1b2c.iam.gserviceaccount.com

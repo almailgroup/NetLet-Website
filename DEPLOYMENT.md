@@ -41,7 +41,7 @@ sudo pmset -a autorestart 1   # come back up after a power cut
 ## 1. Configure
 
 ```sh
-cp .env.example .env
+pnpm setup:env        # or, by hand: cp .env.example .env
 ```
 
 Fill in the two Storefront values. `.env.example` documents every other

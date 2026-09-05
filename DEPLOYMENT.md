@@ -123,11 +123,11 @@ paths:
 <plist version="1.0">
 <dict>
   <key>Label</key>            <string>com.netlet.storefront</string>
-  <key>WorkingDirectory</key> <string>/Users/YOU/NetLet-web-app</string>
+  <key>WorkingDirectory</key> <string>/Users/YOU/NetLet-Website</string>
   <key>ProgramArguments</key>
   <array>
     <string>/usr/local/bin/node</string>
-    <string>/Users/YOU/NetLet-web-app/dist/index.js</string>
+    <string>/Users/YOU/NetLet-Website/dist/index.js</string>
   </array>
   <key>EnvironmentVariables</key>
   <dict>
